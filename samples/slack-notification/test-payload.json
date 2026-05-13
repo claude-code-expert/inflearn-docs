@@ -1,0 +1,8 @@
+{
+  "session_id": "test-session-0001",
+  "cwd": "/Users/codevillain/Claude-Code-Expert/inflearn-docs",
+  "hook_event_name": "Stop",
+  "stop_hook_active": false,
+  "transcript_path": "/tmp/fake-transcript.jsonl",
+  "last_assistant_message": ":bell: 알림 발송 테스트입니다.\n\n- 프로젝트: inflearn-docs\n- 시나리오: Stop 이벤트로 Slack Webhook 호출\n- 결과: 200 OK 라면 성공"
+}

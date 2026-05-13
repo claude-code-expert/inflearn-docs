@@ -1,0 +1,20 @@
+{
+  "_comment": "Claude Code 의 ~/.claude/settings.json 에서 Stop 이벤트에 hook 을 등록하는 예시. 기존 hooks 블록과 병합하세요.",
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "osascript -e 'display notification \"작업 완료!\" with title \"Claude Code\"'; afplay /System/Library/Sounds/Hero.aiff"
+          },
+          {
+            "type": "command",
+            "command": "zsh ~/.claude/hooks/notify-slack.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

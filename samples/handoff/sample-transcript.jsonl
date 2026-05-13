@@ -1,0 +1,10 @@
+{"type":"user","message":{"role":"user","content":"slack 알림 훅을 설치하고 싶어. ~/.zshrc 에 webhook URL 을 어떻게 등록해?"}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"`~/.zshrc` 에 `export CLAUDE_SLACK_WEBHOOK_URL=\"https://hooks.slack.com/services/...\"` 한 줄을 추가하고 `source ~/.zshrc` 하면 됩니다."}]}}
+{"type":"user","message":{"role":"user","content":"훅 스크립트는 어디에 두지?"}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"`~/.claude/hooks/notify-slack.sh` 가 표준 위치입니다. settings.json 의 `hooks.Stop` 에 `zsh ~/.claude/hooks/notify-slack.sh` 명령으로 등록하세요."},{"type":"tool_use","name":"Read","input":{"file_path":"/Users/codevillain/.claude/hooks/notify-slack.sh"}}]}}
+{"type":"user","message":{"role":"user","content":"jq 가 없으면 어떻게 처리돼?"}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"`command -v jq` 체크해서 없으면 exit 0 으로 조용히 빠집니다. 발송 실패가 Claude Code 본 흐름을 막지 않도록 설계되어 있습니다."}]}}
+{"type":"user","message":{"role":"user","content":"PreCompact 가 발화하는 시점이 정확히 언제야?"}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"컨텍스트 윈도우 한계에 가까워져 auto-compact 가 일어나거나 사용자가 직접 `/compact` 를 입력하기 직전에 발화합니다. stdin 으로 session_id, transcript_path 가 JSON 으로 전달됩니다."},{"type":"tool_use","name":"Edit","input":{"file_path":"/Users/codevillain/Claude-Code-Expert/inflearn-docs/samples/handoff/run-test.sh","old_string":"old","new_string":"new"}}]}}
+{"type":"user","message":{"role":"user","content":"session-restore.sh 는 어떤 조건일 때 latest-handoff 로 fallback 해?"}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"`source=clear` 이면서 session-id 별 파일이 없을 때만 latest-handoff.md 로 fallback 합니다. 단, 생성된 지 15분(`HANDOFF_LATEST_MAX_AGE_SEC` 기본값) 이내이고 cwd 가 일치할 때만 유효합니다."}]}}
