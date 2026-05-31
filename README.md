@@ -152,3 +152,20 @@ AI 코딩 에이전트(Claude Code, Cursor, Codex 등)에게 프로젝트 맥락
 ---
 
 > 강의 본문과 함께 보면 가장 효과적입니다. 이슈·질문은 [github.com/claude-code-expert](https://github.com/claude-code-expert)로 남겨주세요.
+
+---
+
+## License
+
+© 2026 villainscode. All rights reserved.
+
+본 강의 자료는 [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ko)(저작자표시-비영리-변경금지) 라이센스를 따릅니다.
+
+- ✅ **링크 공유** 허용 — 본 페이지의 링크를 자유롭게 공유할 수 있습니다.
+- ✅ **출처 표시 + 비영리** 조건 시 원본 그대로의 복제·재배포 허용
+- ❌ **상업적 이용** 금지
+- ❌ **수정·2차 가공** 후 배포 금지 (원본을 변경하지 않은 그대로만 공유 가능)
+
+상업적 이용이나 자료 수정·가공이 필요하면 저작자에게 사전 동의를 받아 주세요.
+
+[![License: CC BY-NC-ND 4.0](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-nd/4.0/)
