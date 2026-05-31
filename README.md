@@ -83,7 +83,7 @@ AI 코딩 에이전트(Claude Code, Cursor, Codex 등)에게 프로젝트 맥락
 
 > 둘 다 추측과 과잉 설계를 거부하지만, 한쪽은 *신중함*으로, 다른 한쪽은 *규율*로 접근한다. `docs/claude_template_ts/`의 Behavioral / Augmented 지침의 원형이다.
 
-### 📁 `project/dluckydraw/` — 설계 문서 예제 (럭키드로우 앱)
+### 📁 `project/luckydraw/` — 설계 문서 예제 (럭키드로우 앱)
 "기능 구현 전에 무엇을 문서화하는가"를 보여주는 3단 명세. **왜 → 어떻게 → 무엇을**의 흐름.
 
 | 문서 | 계층 | 핵심 내용 |
@@ -137,7 +137,7 @@ AI 코딩 에이전트(Claude Code, Cursor, Codex 등)에게 프로젝트 맥락
 - **철학 → 지침**: `example/`의 Karpathy·Kent Beck 스타일이 `docs/claude_template_ts/`(Behavioral·Augmented)와 `template/`의 Investigation/Recovery 규칙으로 구체화된다.
 - **가이드 ↔ 샘플**: `docs/guide/`의 각 가이드는 `samples/`의 실행 코드와 1:1로 짝을 이룬다(Gemini 리뷰·Handoff·Slack 알림).
 - **지침 → Hooks**: `template/README.md` §4(멀티턴 방어)의 Hooks 설계가 `samples/`의 Hooks 구현으로 이어진다.
-- **명세 → 구현**: `project/dluckydraw/`는 위 지침·습관을 적용해 만들 산출물의 설계 문서 표준을 보여준다.
+- **명세 → 구현**: `project/luckydraw/`는 위 지침·습관을 적용해 만들 산출물의 설계 문서 표준을 보여준다.
 
 ---
 
