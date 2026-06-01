@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lucky Draw</title>
+<style>
+  /* ===========================================================
+     Lucky Draw — 단일 파일 정적 페이지
+     M0: 골격 · 디자인 토큰 · 레이아웃 · 빈 휠
+     디자인: REQUIREMENTS §4 (흑백 + 빨강 1색, AI 흔적 배제)
+     =========================================================== */
+  :root {
+    --bg:        #FFFFFF;
+    --surface:   #FAFAFA;
+    --border:    #E5E5E5;
+    --text:      #111111;
+    --muted:     #737373;
+    --accent:    #DC2626;   /* 단일 액센트 — 빨강 (포인터·SPIN에만) */
+    --accent-d:  #B91C1C;
+
+    --wheel-a:   #111111;   /* 슬라이스 색 A (검정) */
+    --wheel-b:   #FAFAFA;   /* 슬라이스 색 B (회백) */
+    --wheel-text-on-a: #FAFAFA;
+    --wheel-text-on-b: #111111;
+
+    --space-1: 4px;  --space-2: 8px;  --space-3: 12px;
+    --space-4: 16px; --space-6: 24px; --space-8: 32px;
+    --radius: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* 컨페티 전용 캔버스 (M5) */
+  #confetti {
+    position: fixed; inset: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 200;
+  }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: var(--space-8) var(--space-4) 64px; }
+
+  /* ===== 헤더 ===== */
+  header { text-align: center; margin-bottom: var(--space-8); }
+  header h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
+  header p { color: var(--muted); font-size: 14px; margin-top: var(--space-2); }
+
+  /* ===== 레이아웃 ===== */
+  .layout { display: grid; grid-template-columns: 1fr 360px; gap: var(--space-6); align-items: start; }
+  @media (max-width: 920px) { .layout { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--space-6);
+  }
+
+  /* ===== 휠 카드 ===== */
+  .wheel-card { display: flex; flex-direction: column; align-items: center; }
+
+  .wheel-wrap { position: relative; width: 100%; max-width: 440px; aspect-ratio: 1 / 1; margin: 0 auto; }
+
+  /* 12시 포인터 (빨강) */
+  .pointer {
+    position: absolute; top: -2px; left: 50%; transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 13px solid transparent;
+    border-right: 13px solid transparent;
+    border-top: 20px solid var(--accent);
+    z-index: 3;
+  }
+
+  .wheel-svg { display: block; width: 100%; height: 100%; transform-origin: 50% 50%;
+               transition: transform 5.5s cubic-bezier(0.17, 0.67, 0.12, 0.99); }
+
+  /* 직전 추첨 번호 배지 (M3) */
+  .number-badge {
+    margin-top: var(--space-4);
+    font-size: 14px; color: var(--muted);
+    min-height: 24px; text-align: center;
+  }
+  .number-badge b { color: var(--text); font-size: 18px; }
+
+  /* 결과 패널 */
+  .result-panel {
+    margin-top: var(--space-4); width: 100%; text-align: center;
+    padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--bg);
+  }
+  .result-panel .label { font-size: 12px; color: var(--muted); letter-spacing: 0.08em; }
+  .result-panel .value { font-size: 22px; font-weight: 800; margin-top: var(--space-1); }
+
+  /* SPIN 버튼 */
+  .spin-btn {
+    margin-top: var(--space-6);
+    min-width: 200px; min-height: 56px;
+    font-size: 18px; font-weight: 800; letter-spacing: 0.05em;
+    color: #fff; background: var(--accent);
+    border: none; border-radius: var(--radius); cursor: pointer;
+    transition: background 200ms ease-out;
+  }
+  .spin-btn:hover:not(:disabled) { background: var(--accent-d); }
+  .spin-btn:disabled { background: var(--muted); opacity: 0.5; cursor: not-allowed; }
+
+  /* ===== 사이드 패널 ===== */
+  .side { display: flex; flex-direction: column; gap: var(--space-4); }
+  .panel-title { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: 0.04em; margin-bottom: var(--space-3); }
+
+  label.field { display: block; font-size: 13px; color: var(--muted); margin-bottom: var(--space-1); }
+  input[type="text"], input[type="number"] {
+    width: 100%; height: 44px;
+    padding: 0 var(--space-3);
+    font-size: 15px; color: var(--text);
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+  }
+  input:focus { outline: none; border-color: var(--text); }
+  input.shake { animation: shake 0.3s; border-color: var(--accent); }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+
+  .prize-input-row { display: grid; grid-template-columns: 1fr 72px; gap: var(--space-2); }
+  .btn {
+    height: 44px; padding: 0 var(--space-4);
+    font-size: 14px; font-weight: 700; color: var(--text);
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+    cursor: pointer; transition: border-color 200ms, color 200ms;
+  }
+  .btn:hover { border-color: var(--text); }
+  .btn-block { width: 100%; }
+  .btn-row { display: flex; gap: var(--space-2); }
+
+  /* 경품 리스트 */
+  .prize-list { list-style: none; margin-top: var(--space-3); }
+  .prize-list:empty::after { content: "등록된 경품이 없습니다."; color: var(--muted); font-size: 13px; }
+  .prize-item {
+    display: flex; align-items: center; gap: var(--space-2);
+    padding: var(--space-2) 0; border-bottom: 1px solid var(--border);
+  }
+  .prize-name { flex: 1; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .prize-count { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .prize-item.depleted { opacity: 0.45; }
+  .prize-remove {
+    width: 36px; height: 36px; flex: none;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--bg); color: var(--muted); cursor: pointer; line-height: 1;
+  }
+  .prize-remove:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* 통계 */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); text-align: center; }
+  .stat { padding: var(--space-3) var(--space-2); border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
+  .stat .num { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .stat .cap { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* 기록 */
+  .history { list-style: none; max-height: 220px; overflow-y: auto; }
+  .history:empty::after { content: "아직 추첨 기록이 없습니다."; color: var(--muted); font-size: 13px; }
+  .history li { display: flex; gap: var(--space-2); padding: var(--space-2) 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .history .seq { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .history .h-name { flex: 1; font-weight: 600; }
+  .history .h-time { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: var(--space-8); }
+
+  /* ===== 모달 ===== */
+  .modal { position: fixed; inset: 0; z-index: 100; display: none;
+           align-items: center; justify-content: center;
+           background: rgba(17,17,17,0.45); padding: var(--space-4); }
+  .modal.open { display: flex; animation: fadeIn 0.3s ease-out; }
+  .modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+               padding: var(--space-8) var(--space-6); text-align: center; max-width: 360px; width: 100%; }
+  .modal.open .modal-box { animation: pop 0.3s ease-out; }
+  .modal-emoji { font-size: 40px; line-height: 1; margin-bottom: var(--space-2); }
+  .modal-number { font-size: 14px; color: var(--muted); }
+  .modal-prize { font-size: 28px; font-weight: 800; margin: var(--space-2) 0 var(--space-6); word-break: break-all; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes pop { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wheel-svg { transition: transform 1s ease-out !important; }   /* 회전 시간 단축 */
+    .modal.open, .modal.open .modal-box { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="confetti" aria-hidden="true"></canvas>
+
+<div class="container">
+
+  <header>
+    <h1>Lucky Draw</h1>
+    <p>인원수와 경품을 등록하고 SPIN 버튼을 누르세요.</p>
+  </header>
+
+  <div class="layout">
+
+    <!-- ===== 휠 카드 ===== -->
+    <section class="card wheel-card" aria-label="추첨 휠">
+      <div class="wheel-wrap">
+        <div class="pointer" aria-hidden="true"></div>
+        <svg id="wheel" class="wheel-svg" viewBox="0 0 200 200" role="img" aria-label="경품 원판"></svg>
+      </div>
+
+      <div id="numberBadge" class="number-badge" aria-live="polite"></div>
+
+      <div class="result-panel" aria-live="polite">
+        <div class="label">RESULT</div>
+        <div id="resultValue" class="value">READY TO SPIN</div>
+      </div>
+
+      <button id="spinBtn" class="spin-btn" type="button" disabled>SPIN</button>
+    </section>
+
+    <!-- ===== 사이드 패널 ===== -->
+    <aside class="side">
+
+      <!-- 인원수 -->
+      <div class="card">
+        <div class="panel-title">인원수</div>
+        <label class="field" for="participantInput">추첨 대상 인원 (번호 1 ~ N)</label>
+        <input id="participantInput" type="number" min="1" max="999" placeholder="예: 10" inputmode="numeric">
+      </div>
+
+      <!-- 경품 입력 -->
+      <div class="card">
+        <div class="panel-title">경품</div>
+        <label class="field" for="prizeName">상품명 · 갯수</label>
+        <div class="prize-input-row">
+          <input id="prizeName" type="text" maxlength="20" placeholder="예: 키보드">
+          <input id="prizeCount" type="number" min="1" max="999" placeholder="갯수" inputmode="numeric">
+        </div>
+        <div style="margin-top:var(--space-2)">
+          <button id="addBtn" class="btn btn-block" type="button">추가</button>
+        </div>
+        <ul id="prizeList" class="prize-list" aria-label="등록된 경품"></ul>
+      </div>
+
+      <!-- 통계 -->
+      <div class="card">
+        <div class="panel-title">통계</div>
+        <div class="stats">
+          <div class="stat"><div id="statPrizes" class="num">0</div><div class="cap">남은 경품</div></div>
+          <div class="stat"><div id="statDrawn" class="num">0</div><div class="cap">추첨</div></div>
+          <div class="stat"><div id="statLeft" class="num">0</div><div class="cap">남은 인원</div></div>
+        </div>
+      </div>
+
+      <!-- 기록 -->
+      <div class="card">
+        <div class="panel-title">당첨 기록</div>
+        <ul id="history" class="history" aria-label="당첨 기록"></ul>
+      </div>
+
+      <!-- 보조 -->
+      <div class="btn-row">
+        <button id="exampleBtn" class="btn btn-block" type="button">예시</button>
+        <button id="resetBtn" class="btn btn-block" type="button">초기화</button>
+      </div>
+
+    </aside>
+
+  </div>
+
+  <footer>단일 파일 · 외부 의존성 없음</footer>
+</div>
+
+<!-- 당첨 모달 -->
+<div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalPrize" aria-hidden="true">
+  <div class="modal-box">
+    <div id="modalEmoji" class="modal-emoji" aria-hidden="true">🎊</div>
+    <div id="modalNumber" class="modal-number"></div>
+    <div id="modalPrize" class="modal-prize"></div>
+    <button id="modalClose" class="btn" type="button">닫기</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ===== 상수 (TRD §11) ===== */
+const SPIN_DURATION_MS = 5500;
+const MIN_SPINS        = 6;
+const MAX_EXTRA_SPINS  = 3;
+const PARTICLE_COUNT   = 180;
+const WHEEL_RADIUS     = 98;
+const MAX_COUNT        = 999;
+const BLANK            = 'BLANK';   // 꽝 섹션 식별자
+
+/* ===== 상태 (ANALYSIS §6) ===== */
+let prizes = [];                 // { id, name, count }
+let sections = [];               // prizeId | BLANK  — 고정 길이 S
+let participantCount = 0;        // N
+let drawnNumbers = new Set();    // 이미 뽑힌 번호
+let currentNumber = null;
+let isSpinning = false;
+let currentRotation = 0;
+let history = [];                // { number, name, time }
+
+/* ===== DOM ===== */
+const $ = (id) => document.getElementById(id);
+const wheelEl   = $('wheel');
+const spinBtn   = $('spinBtn');
+const resultEl  = $('resultValue');
+const numberEl  = $('numberBadge');
+
+/* ===== 유틸 ===== */
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, ch => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[ch]));
+}
+
+/* ===== 렌더 — 단일 진입점 (TRD §4.2) ===== */
+function refresh() {
+  // 셋업 단계(추첨 시작 전)에서만 섹션 재구성. 추첨 중에는 고정 + 재배정만(M6).
+  if (!isSpinning && drawnNumbers.size === 0) rebuildSections();
+  buildWheel();
+  renderPrizeList();
+  renderStats();
+  renderHistory();
+  updateSpinButton();
+}
+
+/* 고정 섹션 구성 (ANALYSIS §7.1): 경품을 count만큼 펼친 units + 꽝 1칸 */
+function rebuildSections() {
+  const units = [];
+  prizes.forEach(p => { for (let i = 0; i < p.count; i++) units.push(p.id); });
+  sections = units.length ? units.concat([BLANK]) : [];   // 경품 없으면 빈 휠(자리표시)
+}
+
+/* SVG 슬라이스 기하 (TRD §5.2): 0도=오른쪽, 시계방향, 12시=-90도 */
+function polar(cx, cy, r, deg) {
+  const rad = deg * Math.PI / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+function describeSlice(cx, cy, r, startDeg, endDeg) {
+  const s = polar(cx, cy, r, startDeg);
+  const e = polar(cx, cy, r, endDeg);
+  const largeArc = endDeg - startDeg > 180 ? 1 : 0;
+  return 'M ' + cx + ' ' + cy +
+         ' L ' + s.x.toFixed(2) + ' ' + s.y.toFixed(2) +
+         ' A ' + r + ' ' + r + ' 0 ' + largeArc + ' 1 ' + e.x.toFixed(2) + ' ' + e.y.toFixed(2) + ' Z';
+}
+function truncateLabel(name, max) {
+  return name.length > max ? name.slice(0, Math.max(1, max - 1)) + '…' : name;
+}
+
+/* 휠 렌더: 고정 S섹션, 2색 교차(흑/백) + 꽝(회색). 라벨 truncate/생략 (F4) */
+function buildWheel() {
+  if (sections.length === 0) {
+    wheelEl.innerHTML =
+      '<circle cx="100" cy="100" r="' + WHEEL_RADIUS + '" fill="var(--bg)" stroke="var(--border)" stroke-width="1"/>' +
+      '<text x="100" y="104" text-anchor="middle" font-size="11" fill="var(--muted)">경품을 추가해주세요</text>';
+    return;
+  }
+  const S = sections.length;
+  const anglePer = 360 / S;
+  const cx = 100, cy = 100, r = WHEEL_RADIUS;
+  const showLabel = anglePer >= 10;                                  // 10도 미만 → 라벨 생략
+  const maxChars = S >= 12 ? Math.max(2, Math.floor(anglePer / 3)) : 20;  // 12섹션 이상 → truncate
+  const fontSize = S > 18 ? 5 : 6.5;
+  let out = '';
+
+  for (let i = 0; i < S; i++) {
+    const start = i * anglePer - 90;
+    const end = (i + 1) * anglePer - 90;
+    const isBlank = sections[i] === BLANK;
+    let fill, textColor;
+    if (isBlank)            { fill = '#D4D4D4';          textColor = '#111111'; }   // 꽝 = 중립 회색
+    else if (i % 2 === 0)   { fill = 'var(--wheel-a)';   textColor = 'var(--wheel-text-on-a)'; }
+    else                    { fill = 'var(--wheel-b)';   textColor = 'var(--wheel-text-on-b)'; }
+
+    out += '<path d="' + describeSlice(cx, cy, r, start, end) +
+           '" fill="' + fill + '" stroke="var(--bg)" stroke-width="0.5"/>';
+
+    if (showLabel) {
+      const prize = isBlank ? null : prizes.find(p => p.id === sections[i]);
+      const text = isBlank ? '꽝' : truncateLabel(prize ? prize.name : '', maxChars);
+      const mid = start + anglePer / 2;
+      const m = ((mid % 360) + 360) % 360;
+      const rot = (m > 90 && m < 270) ? m + 180 : m;                 // 좌/하단 라벨 뒤집힘 방지
+      const pos = polar(cx, cy, r * 0.62, mid);
+      out += '<text x="' + pos.x.toFixed(2) + '" y="' + pos.y.toFixed(2) +
+             '" text-anchor="middle" dominant-baseline="middle" font-size="' + fontSize +
+             '" fill="' + textColor +
+             '" transform="rotate(' + rot.toFixed(2) + ' ' + pos.x.toFixed(2) + ' ' + pos.y.toFixed(2) + ')">' +
+             escapeHtml(text) + '</text>';
+    }
+  }
+  out += '<circle cx="100" cy="100" r="10" fill="var(--bg)" stroke="var(--border)" stroke-width="1"/>';
+  wheelEl.innerHTML = out;
+}
+
+function renderStats() {
+  const remain = prizes.reduce((s, p) => s + p.count, 0);
+  $('statPrizes').textContent = remain;
+  $('statDrawn').textContent  = drawnNumbers.size;
+  $('statLeft').textContent   = Math.max(0, participantCount - drawnNumbers.size);
+}
+
+function updateSpinButton() {
+  const ready = !isSpinning && participantCount > 0 && sections.length > 0
+                && drawnNumbers.size < participantCount;
+  spinBtn.disabled = !ready;
+  // 회전 중 입력/버튼 잠금 (F5 권장)
+  ['participantInput', 'prizeName', 'prizeCount', 'addBtn', 'resetBtn', 'exampleBtn']
+    .forEach(id => { $(id).disabled = isSpinning; });
+}
+
+/* ===== 번호 추첨 (ANALYSIS §7.2): 1..N 균등 랜덤, 중복 불가 ===== */
+const NUMBER_REVEAL_MS = 800;
+function prefersReducedMotion() {
+  return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+function drawNumber() {
+  const pool = [];
+  for (let n = 1; n <= participantCount; n++) if (!drawnNumbers.has(n)) pool.push(n);
+  if (pool.length === 0) return null;
+  const picked = pool[Math.floor(Math.random() * pool.length)];
+  drawnNumbers.add(picked);
+  currentNumber = picked;
+  return picked;
+}
+function revealNumber(finalNum, onDone) {
+  if (prefersReducedMotion()) {                          // 동작 감소: 즉시 공개
+    numberEl.innerHTML = '당첨 번호 <b>' + finalNum + '</b>번';
+    if (onDone) onDone();
+    return;
+  }
+  const timer = setInterval(() => {                      // 숫자 플리커(휠 회전 아님)
+    const rnd = 1 + Math.floor(Math.random() * Math.max(1, participantCount));
+    numberEl.innerHTML = '추첨 중… <b>' + rnd + '</b>';
+  }, 60);
+  setTimeout(() => {
+    clearInterval(timer);
+    numberEl.innerHTML = '당첨 번호 <b>' + finalNum + '</b>번';
+    if (onDone) onDone();
+  }, NUMBER_REVEAL_MS);
+}
+
+/* SPIN: 번호 추첨 → (M4) 경품 원판 회전 */
+function startDraw() {
+  if (isSpinning) return;
+  if (participantCount <= 0 || sections.length === 0) return;
+  if (drawnNumbers.size >= participantCount) return;     // 모든 번호 소진
+  isSpinning = true;
+  updateSpinButton();
+  const num = drawNumber();
+  revealNumber(num, () => { spin(num); });               // 번호 공개 → 원판 회전
+}
+
+/* ===== 경품 원판 회전 (TRD §5.3 — 알고리즘 변경 금지) ===== */
+const REDUCED_SPIN_MS = 1000;
+function spin(number) {
+  const S = sections.length;
+  if (S === 0) { isSpinning = false; updateSpinButton(); return; }
+  const anglePer = 360 / S;
+  const winIdx = Math.floor(Math.random() * S);
+
+  // 당첨 슬라이스 중심을 12시(-90도, 포인터)로 끌어오는 회전량
+  const sliceCenter = winIdx * anglePer + anglePer / 2 - 90;
+  let targetAngle = -90 - sliceCenter;
+  const jitter = (Math.random() - 0.5) * anglePer * 0.7;   // ±35% jitter
+  targetAngle += jitter;
+
+  const baseSpins = MIN_SPINS + Math.floor(Math.random() * MAX_EXTRA_SPINS);  // 6~8바퀴
+  const currentMod = currentRotation % 360;
+  const deltaToTarget = ((targetAngle - currentMod) + 720) % 360;
+  currentRotation += baseSpins * 360 + deltaToTarget;
+
+  wheelEl.style.transform = 'rotate(' + currentRotation + 'deg)';
+  const dur = prefersReducedMotion() ? REDUCED_SPIN_MS : SPIN_DURATION_MS;
+  setTimeout(() => onSpinEnd(winIdx, number), dur);
+}
+
+/* 회전 종료: winIdx 슬라이스 = 결과 (휠 정지 위치와 100% 일치 ⭐) */
+function onSpinEnd(winIdx, number) {
+  const sec = sections[winIdx];
+  const prize = (sec === BLANK) ? null : prizes.find(p => p.id === sec);
+  const isWin = !!prize;
+  const name = prize ? prize.name : '꽝';
+  resultEl.textContent = '#' + number + ' → ' + name;            // 1) 결과 패널
+  history.push({ number: number, name: name, time: nowHMS() });  // 2) 기록
+  openModal(number, name, isWin);                                // 3) 모달
+  if (isWin) confettiBurst();                                    // 컨페티(당첨만)
+
+  // 재고 차감 + 재배정 (ANALYSIS §7.4) — 섹션 수는 고정 유지
+  if (isWin) {
+    prize.count -= 1;
+    if (prize.count === 0) reassignDepleted(prize.id);
+  }
+
+  isSpinning = false;
+  refresh();
+}
+
+/* 소진된 경품의 섹션을 재고 최다 경품으로 재배정(없으면 꽝). 섹션 수 불변 */
+function reassignDepleted(depletedId) {
+  let target = null;
+  for (const p of prizes) {                                      // 동률은 등록순(먼저 등록된 것)
+    if (p.count > 0 && (target === null || p.count > target.count)) target = p;
+  }
+  const fill = target ? target.id : BLANK;
+  sections = sections.map(s => (s === depletedId ? fill : s));
+}
+
+/* ===== 결과: 기록 (REQUIREMENTS F9) ===== */
+function nowHMS() {
+  const d = new Date();
+  return [d.getHours(), d.getMinutes(), d.getSeconds()]
+    .map(x => String(x).padStart(2, '0')).join(':');
+}
+function renderHistory() {
+  $('history').innerHTML = history.map((h, i) =>
+    '<li><span class="seq">#' + (i + 1) + '</span>' +
+      '<span class="h-name">' + escapeHtml(h.name) +
+        ' <span style="color:var(--muted);font-weight:400">(' + h.number + '번)</span></span>' +
+      '<span class="h-time">' + h.time + '</span></li>'
+  ).reverse().join('');                                          // 최신이 위 (역순)
+}
+
+/* ===== 결과: 모달 ===== */
+function openModal(number, name, isWin) {
+  $('modalEmoji').style.display = isWin ? 'block' : 'none';
+  $('modalNumber').textContent = '당첨 번호 ' + number + '번';
+  $('modalPrize').textContent = name;
+  const m = $('modal');
+  m.classList.add('open');
+  m.setAttribute('aria-hidden', 'false');
+  $('modalClose').focus();
+}
+function closeModal() {
+  const m = $('modal');
+  if (!m.classList.contains('open')) return;
+  m.classList.remove('open');
+  m.setAttribute('aria-hidden', 'true');
+  spinBtn.focus();
+}
+
+/* ===== 입력: 인원수 ===== */
+function setParticipants(v) {
+  let n = parseInt(v, 10);
+  if (!Number.isInteger(n) || n < 0) n = 0;
+  if (n > MAX_COUNT) n = MAX_COUNT;
+  participantCount = n;
+}
+
+/* ===== 입력: 경품 추가/삭제 (REQUIREMENTS F1~F3) ===== */
+let nextId = 1;
+function addPrize() {
+  const nameEl = $('prizeName'), countEl = $('prizeCount');
+  const name = nameEl.value.trim().slice(0, 20);
+  const count = parseInt(countEl.value, 10);
+  if (!name)                                 { shake(nameEl);  nameEl.focus();  return; }
+  if (!Number.isInteger(count) || count < 1) { shake(countEl); countEl.focus(); return; }
+  const add = Math.min(count, MAX_COUNT);
+  const same = prizes.find(p => p.name === name);          // 동일 이름 병합 (F3)
+  if (same) same.count = Math.min(same.count + add, MAX_COUNT);
+  else prizes.push({ id: nextId++, name: name, count: add });
+  nameEl.value = ''; countEl.value = '';
+  nameEl.focus();
+  refresh();
+}
+function removePrize(id) {
+  if (isSpinning) return;
+  prizes = prizes.filter(p => p.id !== id);
+  refresh();
+}
+
+/* ===== 렌더: 경품 리스트 (count 0도 회색으로 표시) ===== */
+function renderPrizeList() {
+  $('prizeList').innerHTML = prizes.map(p =>
+    '<li class="prize-item' + (p.count === 0 ? ' depleted' : '') + '">' +
+      '<span class="prize-name">' + escapeHtml(p.name) + '</span>' +
+      '<span class="prize-count">' + p.count + '개</span>' +
+      '<button class="prize-remove" type="button" data-id="' + p.id +
+        '" aria-label="' + escapeHtml(p.name) + ' 삭제">×</button>' +
+    '</li>'
+  ).join('');
+}
+
+/* ===== 입력 검증 실패 피드백 ===== */
+function shake(el) {
+  el.classList.remove('shake');
+  void el.offsetWidth;            // 애니메이션 재시작용 reflow
+  el.classList.add('shake');
+  setTimeout(() => el.classList.remove('shake'), 320);
+}
+
+/* ===== 초기화 / 예시 (REQUIREMENTS F11·F12) ===== */
+function resetWheelTransform() {
+  currentRotation = 0;
+  const prev = wheelEl.style.transition;
+  wheelEl.style.transition = 'none';                 // 회전 없이 즉시 0도 복귀
+  wheelEl.style.transform = 'rotate(0deg)';
+  void wheelEl.offsetWidth;                           // reflow 후 트랜지션 복원
+  wheelEl.style.transition = prev;
+}
+function reset() {
+  if (isSpinning) return;
+  if (!confirm('모든 경품과 추첨 기록을 초기화할까요?')) return;
+  prizes = []; sections = []; history = [];
+  drawnNumbers = new Set(); currentNumber = null; participantCount = 0;
+  resetWheelTransform();
+  $('participantInput').value = '';
+  $('prizeName').value = ''; $('prizeCount').value = '';
+  numberEl.textContent = '';
+  resultEl.textContent = 'READY TO SPIN';
+  closeModal();
+  refresh();
+}
+function loadExample() {
+  if (isSpinning) return;
+  if (prizes.length > 0 && !confirm('현재 경품을 지우고 예시를 불러올까요?')) return;
+  prizes = []; history = []; drawnNumbers = new Set(); currentNumber = null;
+  nextId = 1;
+  [['스타벅스 쿠폰', 1], ['치킨 기프티콘', 2], ['편의점 5천원', 3], ['문상 1만원', 2]]
+    .forEach(pair => prizes.push({ id: nextId++, name: pair[0], count: pair[1] }));
+  participantCount = 10;                              // 예시: 10명 (경품 8 + 꽝 → 2명은 꽝)
+  $('participantInput').value = '10';
+  resetWheelTransform();
+  numberEl.textContent = '';
+  resultEl.textContent = 'READY TO SPIN';
+  closeModal();
+  refresh();
+}
+
+/* ===== 이벤트 바인딩 ===== */
+$('participantInput').addEventListener('input', (e) => {
+  const raw = parseInt(e.target.value, 10);
+  setParticipants(e.target.value);
+  if (Number.isInteger(raw) && raw > MAX_COUNT) e.target.value = String(MAX_COUNT);
+  refresh();
+});
+$('addBtn').addEventListener('click', addPrize);
+['prizeName', 'prizeCount'].forEach(id =>
+  $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') addPrize(); }));
+$('prizeList').addEventListener('click', (e) => {
+  const btn = e.target.closest('.prize-remove');
+  if (btn) removePrize(Number(btn.dataset.id));
+});
+$('resetBtn').addEventListener('click', reset);
+$('exampleBtn').addEventListener('click', loadExample);
+spinBtn.addEventListener('click', startDraw);
+$('modalClose').addEventListener('click', closeModal);
+$('modal').addEventListener('click', (e) => { if (e.target === $('modal')) closeModal(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+/* ===== 컨페티 (Canvas 2D, TRD §5.5) — 당첨 시에만 ===== */
+const confettiCanvas = $('confetti');
+const ctx = confettiCanvas.getContext('2d');
+const CONFETTI_COLORS = ['#111111', '#404040', '#737373', '#DC2626'];  // 흑·회색·빨강(브랜드 내)
+let particles = [];
+let confettiRunning = false;
+
+function resizeConfetti() {
+  confettiCanvas.width = window.innerWidth;
+  confettiCanvas.height = window.innerHeight;
+}
+function spawnParticles(cx, cy, n) {
+  for (let i = 0; i < n && particles.length < 360; i++) {        // 총 360개 이하
+    particles.push({
+      x: cx + (Math.random() - 0.5) * 100, y: cy - 50,
+      vx: (Math.random() - 0.5) * 14, vy: -Math.random() * 18 - 4,
+      g: 0.35 + Math.random() * 0.15, size: 6 + Math.random() * 8,
+      color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+      rot: Math.random() * 360, vr: (Math.random() - 0.5) * 12,
+      shape: Math.random() > 0.5 ? 'rect' : 'circle'
+    });
+  }
+}
+function confettiBurst() {
+  if (prefersReducedMotion()) return;                            // 동작 감소: 생략
+  const w = window.innerWidth, h = window.innerHeight;
+  spawnParticles(w / 2, h / 2, PARTICLE_COUNT);
+  setTimeout(() => spawnParticles(w * 0.2, h * 0.5, 80), 200);   // 0.2초 후 좌측
+  setTimeout(() => spawnParticles(w * 0.8, h * 0.5, 80), 400);   // 0.4초 후 우측
+  if (!confettiRunning) { confettiRunning = true; requestAnimationFrame(confettiLoop); }
+}
+function confettiLoop() {
+  ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+  particles = particles.filter(p => p.y < confettiCanvas.height + 40);  // 화면 밖 자동 제거
+  particles.forEach(p => {
+    p.vy += p.g; p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot * Math.PI / 180);
+    ctx.fillStyle = p.color;
+    if (p.shape === 'rect') ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+    else { ctx.beginPath(); ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+  });
+  if (particles.length > 0) requestAnimationFrame(confettiLoop);
+  else { ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height); confettiRunning = false; }
+}
+window.addEventListener('resize', resizeConfetti);
+resizeConfetti();
+
+/* ===== 초기 렌더 ===== */
+refresh();
+</script>
+</body>
+</html>
