@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10단계 프롬프트 구조 — Anthropic "Prompting 101"</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  /* 폰트 선택 이유: 한글 장문 가독성을 위해 본문 Noto Sans KR, 프롬프트·코드는 고정폭 JetBrains Mono로 분리해
+     "읽는 글"과 "넣는 프롬프트"를 시각적으로 구분한다. */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --text:#111111; --muted:#6B7280; --border:#E5E7EB; --bg:#FFFFFF;
+    --code-bg:#F3F4F6; --soft-bg:#F8F7F4;
+    --accent:#B45309;   /* 단일 액센트(deep amber) — 링크·강조·중요 노드에만 */
+  }
+  html { scroll-behavior: smooth; }
+  body { background:var(--bg); color:var(--text); font-family:'Noto Sans KR',sans-serif;
+         font-size:17px; line-height:1.75; -webkit-font-smoothing:antialiased; }
+  /* 워터마크 — 화면 전체에 옅게 반복(클릭 방해 없음) */
+  body::before {
+    content:""; position:fixed; inset:0; z-index:9999; pointer-events:none; opacity:.05;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='240'%3E%3Ctext x='15' y='130' font-family='monospace' font-size='15' fill='%23111111' transform='rotate(-30 180 120)'%3Erun-ai.kr%20%20%20brewnet.dev@gmail.com%3C/text%3E%3C/svg%3E");
+    background-repeat:repeat;
+  }
+  .wrap { max-width:1280px; margin:0 auto; padding:0 24px; }
+  .layout { display:block; }
+  @media (min-width:1040px){ .layout{ display:grid; grid-template-columns:360px minmax(0,1fr); gap:48px; align-items:start; } }
+
+  .toc { border:1px solid var(--border); border-radius:8px; padding:18px 16px; margin:24px 0; font-size:14px; }
+  @media (min-width:1040px){ .toc{ position:sticky; top:24px; margin:40px 0; max-height:calc(100vh - 60px); overflow:auto; } }
+  .toc h2 { font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted);
+            font-family:'JetBrains Mono',monospace; margin-bottom:12px; }
+  .toc ol { list-style:none; counter-reset:t; }
+  .toc li { counter-increment:t; margin:2px 0; }
+  .toc a { display:block; padding:5px 8px; color:var(--text); text-decoration:none;
+           border-left:2px solid transparent; line-height:1.4; border-radius:0 4px 4px 0; }
+  .toc a::before { content:counter(t,decimal-leading-zero) " "; color:var(--muted); font-family:'JetBrains Mono',monospace; font-size:12px; }
+  .toc a:hover { color:var(--accent); }
+  .toc a.active { color:var(--accent); border-left-color:var(--accent); background:var(--soft-bg); font-weight:500; }
+
+  header { padding:56px 0 8px; border-bottom:1px solid var(--border); margin-bottom:8px; }
+  .kicker { font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin-bottom:14px; }
+  h1 { font-size:34px; font-weight:900; line-height:1.2; letter-spacing:-.02em; }
+  .lead { color:var(--muted); font-size:17px; margin-top:14px; max-width:760px; }
+  .meta { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); margin-top:18px; }
+
+  main { padding-bottom:80px; }
+  section { padding-top:52px; }
+  h2.sec { font-size:25px; font-weight:700; letter-spacing:-.02em; line-height:1.3; padding-bottom:12px;
+           border-bottom:1px solid var(--border); margin-bottom:20px; }
+  h2.sec .n { font-family:'JetBrains Mono',monospace; color:var(--accent); font-weight:700; margin-right:10px; }
+  h3 { font-size:19px; font-weight:700; margin:32px 0 10px; }
+  h3 .dot { display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:9px; vertical-align:middle; border:1px solid rgba(0,0,0,.15); }
+  p { margin:12px 0; }
+  ul, ol { margin:12px 0 12px 4px; padding-left:22px; }
+  li { margin:6px 0; }
+  a.link { color:var(--accent); text-decoration:underline; text-underline-offset:3px; word-break:break-all; }
+
+  .lvl { display:inline-block; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.06em;
+         color:var(--muted); border:1px solid var(--border); border-radius:4px; padding:2px 8px;
+         vertical-align:middle; margin-left:10px; font-weight:600; }
+
+  pre { position:relative; background:var(--code-bg); border:1px solid var(--border); border-radius:8px;
+        padding:16px 18px; margin:14px 0; overflow-x:auto; font-family:'JetBrains Mono',monospace; font-size:13.5px; line-height:1.7; }
+  pre code { font-family:inherit; white-space:pre; color:#1f2937; }
+  pre .c { color:var(--muted); }   /* 주석 */
+  pre .p { color:var(--accent); }  /* 강조 */
+  .copy { position:absolute; top:8px; right:8px; font-family:'JetBrains Mono',monospace; font-size:11px;
+          color:var(--muted); background:var(--bg); border:1px solid var(--border); border-radius:4px;
+          padding:3px 9px; cursor:pointer; transition:color 120ms, border-color 120ms; }
+  .copy:hover { color:var(--accent); border-color:var(--accent); }
+  code.inline { font-family:'JetBrains Mono',monospace; font-size:.9em; background:var(--code-bg);
+                border:1px solid var(--border); border-radius:4px; padding:1px 6px; }
+
+  .note { border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:0 8px 8px 0;
+          background:var(--soft-bg); padding:14px 18px; margin:18px 0; }
+  .note .t { font-weight:700; font-size:14px; margin-bottom:4px; }
+  .note p { margin:4px 0; }
+  .note.warn { border-left-color:#B91C1C; }
+  .note.warn .t { color:#B91C1C; }
+
+  table { width:100%; border-collapse:collapse; font-size:14.5px; margin:16px 0; }
+  th { text-align:left; font-weight:700; border-bottom:2px solid var(--text); padding:9px 12px; }
+  td { border-bottom:1px solid var(--border); padding:9px 12px; vertical-align:top; }
+  td code, th code { font-family:'JetBrains Mono',monospace; font-size:13px; }
+  td .sw { display:inline-block; width:11px; height:11px; border-radius:3px; vertical-align:middle; margin-right:6px; border:1px solid rgba(0,0,0,.15); }
+
+  figure { margin:22px 0; border:1px solid var(--border); border-radius:8px; padding:20px; background:#FCFBF8; }
+  figure svg { display:block; width:100%; height:auto; }
+  figcaption { font-size:13px; color:var(--muted); margin-top:12px; text-align:center; }
+
+  footer { border-top:1px solid var(--border); padding:28px 0 60px; color:var(--muted); font-size:13px; }
+  footer a { color:var(--accent); }
+
+  @media print {
+    .toc, .copy { display:none; }
+    body { font-size:12pt; }
+    a.link::after { content:" (" attr(href) ")"; font-size:9pt; color:#555; }
+    pre, table, figure { page-break-inside:avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">Prompt Engineering · Prompting 101</div>
+    <h1>10단계 프롬프트 구조</h1>
+    <p class="lead">Anthropic Applied AI Team의 공식 강의 <strong>"Prompting 101"</strong>에서 제시한 시스템 프롬프트 설계 체크리스트입니다.
+       핵심은 <strong>"장식이 아니라 건축(architecture)"</strong> — 정보를 정해진 순서로 쌓으면 출력이 예측 가능해집니다.
+       기법 → 10단계 구조 → 각 스택 상세 → 실전 예시 순으로 정리했습니다.</p>
+    <p class="meta">기준: Anthropic Prompting 101 (Hannah·Christian) · 2026-04 정리 · 동봉 다이어그램과 색상 1:1 매칭</p>
+  </header>
+
+  <div class="layout">
+
+    <nav class="toc" aria-label="목차">
+      <h2>목차</h2>
+      <ol>
+        <li><a href="#s0">결론 먼저 — 왜 "구조"인가</a></li>
+        <li><a href="#s1">올바른 프롬프팅 기법 5가지</a></li>
+        <li><a href="#s2">10단계 구조 한눈에 보기</a></li>
+        <li><a href="#s3">전체 구조 다이어그램</a></li>
+        <li><a href="#s4">각 스택 상세 (1–10)</a></li>
+        <li><a href="#s5">개발자용 변형 — 코드 리뷰 어시스턴트</a></li>
+        <li><a href="#s6">프롬프트 실전 예시 모음</a></li>
+        <li><a href="#appendix">부록 — 진입 순서 · 출처</a></li>
+      </ol>
+    </nav>
+
+    <main>
+
+      <div class="note" style="margin-top:32px">
+        <div class="t">한 줄 요약</div>
+        <p>정보를 <strong>정체성 → 데이터 → 규칙 → 예시 → 즉시 요청 → 출력형식</strong> 순으로 쌓고,
+           각 블록을 <strong>XML 태그</strong>로 경계 지으면 출력이 예측 가능(observable)해집니다.
+           각 블록은 <strong>단일 목적</strong>만 가집니다.</p>
+      </div>
+
+      <!-- 0 -->
+      <section id="s0">
+        <h2 class="sec"><span class="n">00</span>결론 먼저 — 왜 "구조"인가<span class="lvl">개념</span></h2>
+        <p>좋은 프롬프트는 멋진 문장이 아니라 <strong>잘 쌓은 블록</strong>입니다.
+           정체성(누구) → 자료(무엇을 참조) → 규칙(어떻게) → 예시(이렇게) → 즉시 요청(지금 이것) → 출력형식(이 형태로) 순서로 쌓으면,
+           모델의 출력이 <strong>매번 비슷하게, 예측 가능하게</strong> 나옵니다.</p>
+        <p>핵심 원칙 두 가지:</p>
+        <ul>
+          <li><strong>단일 목적</strong> — 한 블록은 한 가지 일만 한다. 규칙 블록에 데이터를 섞지 않는다.</li>
+          <li><strong>경계 구분</strong> — 각 자료·예시를 <code class="inline">&lt;guide&gt;</code>, <code class="inline">&lt;example&gt;</code> 같은 XML 태그로 감싸 모델이 헷갈리지 않게 한다.</li>
+        </ul>
+        <div class="note">
+          <div class="t">개발자 진입 순서</div>
+          <p><strong>1·2·9·10</strong>(정체성·톤·출력형식·prefill)으로 골격을 먼저 만들어 동작을 확인하고 →
+             <strong>3·4·5</strong>(데이터·규칙·예시)를 결과를 보며 반복 개선하세요. 처음부터 10단계를 다 채우지 않아도 됩니다.</p>
+        </div>
+      </section>
+
+      <!-- 1 -->
+      <section id="s1">
+        <h2 class="sec"><span class="n">01</span>올바른 프롬프팅 기법 5가지<span class="lvl">개념</span></h2>
+        <p>구조를 배우기 전에, 작업 성격에 맞는 <strong>기법</strong>을 고르는 안목이 먼저입니다. 실제 프롬프트 예시는 <a class="link" href="#s6">06 실전 예시</a>에서 자세히 다룹니다.</p>
+        <table>
+          <thead><tr><th>기법</th><th>핵심</th><th>적합한 상황</th></tr></thead>
+          <tbody>
+            <tr><td><strong>제로샷</strong> (Zero-Shot)</td><td>예시 없이 지시문만으로 바로 요청</td><td>빠르고 단순·명확한 작업</td></tr>
+            <tr><td><strong>퓨샷</strong> (Few-Shot)</td><td>입출력 예시를 함께 줘 정확성·일관성 확보</td><td>형식·컨벤션을 정확히 맞춰야 하는 작업</td></tr>
+            <tr><td><strong>생각의 사슬</strong> (CoT)</td><td>작업을 논리적 단계로 분해해 추론 강화</td><td>디버깅·복잡한 추적 작업</td></tr>
+            <tr><td><strong>문제 분해</strong> (Decomposition)</td><td>큰 작업을 작은 단위로 쪼개 순차 진행</td><td>시스템 설계·다단계 기능 구현</td></tr>
+            <tr><td><strong>ReAct</strong> (Reason+Act)</td><td>추론 → 행동(탐색·실행) 반복</td><td>에이전트 자율 탐색·연동 디버깅</td></tr>
+          </tbody>
+        </table>
+        <div class="note">
+          <div class="t">실무 감각</div>
+          <p>단순하면 <strong>제로샷</strong>으로 시작하고, 정밀도가 필요하면 <strong>퓨샷</strong>으로 올리세요.
+             토큰 소모가 곧 비용이므로, 큰 자료는 본문에 붙여넣기보다 <strong>파일 첨부</strong>로 전달하는 것을 권장합니다.
+             그 외 <em>Constitutional Prompting</em>, <em>Plan-and-Solve</em> 등도 같은 계열의 확장입니다.</p>
+        </div>
+      </section>
+
+      <!-- 2 -->
+      <section id="s2">
+        <h2 class="sec"><span class="n">02</span>10단계 구조 한눈에 보기<span class="lvl">레퍼런스</span></h2>
+        <p>아래 10개 블록이 시스템 프롬프트의 <strong>표준 골격</strong>입니다. 색은 다음 섹션의 다이어그램·상세와 1:1로 매칭됩니다.</p>
+        <table>
+          <thead><tr><th>#</th><th>스택</th><th>한 줄 정의</th><th>필수도</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td><span class="sw" style="background:#C0392B"></span><strong>Task context</strong></td><td>역할(persona)과 임무 부여</td><td>거의 필수</td></tr>
+            <tr><td>2</td><td><span class="sw" style="background:#B9770E"></span><strong>Tone context</strong></td><td>말투·태도 설정</td><td>권장</td></tr>
+            <tr><td>3</td><td><span class="sw" style="background:#4F8A3D"></span><strong>Background data</strong></td><td>참조용 외부 데이터(context)</td><td>작업에 따라</td></tr>
+            <tr><td>4</td><td><span class="sw" style="background:#1F8F7E"></span><strong>Task description &amp; rules</strong></td><td>행동 규칙·금지사항</td><td>거의 필수</td></tr>
+            <tr><td>5</td><td><span class="sw" style="background:#2F6FB3"></span><strong>Examples</strong></td><td>이상적 응답 예시(few-shot)</td><td>강력 권장</td></tr>
+            <tr><td>6</td><td><span class="sw" style="background:#7A5BA8"></span><strong>Conversation history</strong></td><td>직전 대화 맥락</td><td>멀티턴 시</td></tr>
+            <tr><td>7</td><td><span class="sw" style="background:#BC417C"></span><strong>Immediate request</strong></td><td>지금 처리할 실제 요청</td><td>필수</td></tr>
+            <tr><td>8</td><td><span class="sw" style="background:#C0392B"></span><strong>Thinking step by step</strong></td><td>응답 전 추론 유도(CoT)</td><td>복잡 작업 시</td></tr>
+            <tr><td>9</td><td><span class="sw" style="background:#6E6E6E"></span><strong>Output formatting</strong></td><td>출력 형식 강제</td><td>권장</td></tr>
+            <tr><td>10</td><td><span class="sw" style="background:#2B2B2B"></span><strong>Prefilled response</strong></td><td>Assistant 답변 선두 고정</td><td>선택</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- 3 -->
+      <section id="s3">
+        <h2 class="sec"><span class="n">03</span>전체 구조 다이어그램<span class="lvl">시각화</span></h2>
+        <p>강의의 Career coach(Joe) 예시를 그대로 옮긴 도식입니다. <strong>좌측 라벨 ↔ 우측 예시 블록</strong>의 색이 같으면 같은 스택입니다.
+           (이 SVG는 HTML에 직접 임베드되어 있어 외부 경로 없이도 항상 표시됩니다.)</p>
+        <figure>
+          <svg viewBox="0 0 1140 1166" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="10단계 프롬프트 구조 다이어그램 — 좌측 라벨과 우측 예시 블록이 색으로 매칭된다"><rect x="0" y="0" width="1140" height="1166" fill="#F6F4EE"/><text x="40" y="58" font-family="'Noto Sans KR', sans-serif" font-size="40" font-weight="700" fill="#1A1A1A">Prompt structure</text><text x="40" y="88" font-family="'Noto Sans KR', sans-serif" font-size="15" fill="#6B6B6B">Anthropic &#183; Prompting 101 &#8212; Career coach (Joe) example</text><text x="392" y="124" font-family="'Noto Sans KR', sans-serif" font-size="14" font-weight="600" fill="#9A9485" letter-spacing="0.5">USER MESSAGE</text><line x1="40" y1="104" x2="1100" y2="104" stroke="#D8D4C8" stroke-width="1"/><rect x="40" y="148" width="320" height="46.5" rx="8" fill="#FBECEA" stroke="#C0392B" stroke-width="1.4"/><text x="56" y="174.0" font-family="'Noto Sans KR', sans-serif" font-size="15" font-weight="600" fill="#C0392B">1. Task context</text><rect x="392" y="148" width="708" height="108.0" rx="8" fill="#FBECEA" stroke="#C0392B" stroke-width="1.4"/><text x="408" y="173.5" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#C0392B" xml:space="preserve">You will be acting as an AI career coach named Joe created by the company</text><text x="408" y="194.0" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#C0392B" xml:space="preserve">AdAstra Careers. Your goal is to give career advice to users. You will be</text><text x="408" y="214.5" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#C0392B" xml:space="preserve">replying to users who are on the AdAstra site and who will be confused if</text><text x="408" y="235.0" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#C0392B" xml:space="preserve">you don&#x27;t respond in the character of Joe.</text><rect x="40" y="270.0" width="320" height="46.5" rx="8" fill="#FBF1E3" stroke="#B9770E" stroke-width="1.4"/><text x="56" y="296.0" font-family="'Noto Sans KR', sans-serif" font-size="15" font-weight="600" fill="#B9770E">2. Tone context</text><rect x="392" y="270.0" width="708" height="46.5" rx="8" fill="#FBF1E3" stroke="#B9770E" stroke-width="1.4"/><text x="408" y="295.5" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#B9770E" xml:space="preserve">You should maintain a friendly customer service tone.</text><rect x="40" y="330.5" width="320" height="67.0" rx="8" fill="#ECF4E7" stroke="#4F8A3D" stroke-width="1.4"/><text x="56" y="356.5" font-family="'Noto Sans KR', sans-serif" font-size="15" font-weight="600" fill="#4F8A3D">3. Background data, documents, and</text><text x="56" y="377.0" font-family="'Noto Sans KR', sans-serif" font-size="15" font-weight="600" fill="#4F8A3D">images</text><rect x="392" y="330.5" width="708" height="67.0" rx="8" fill="#ECF4E7" stroke="#4F8A3D" stroke-width="1.4"/><text x="408" y="356.0" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#4F8A3D" xml:space="preserve">Here is the career guidance document you should reference when answering</text><text x="408" y="376.5" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#4F8A3D" xml:space="preserve">the user: &lt;guide&gt;{{DOCUMENT}}&lt;/guide&gt;</text><rect x="40" y="411.5" width="320" height="46.5" rx="8" fill="#E5F3F0" stroke="#1F8F7E" stroke-width="1.4"/><text x="56" y="437.5" font-family="'Noto Sans KR', sans-serif" font-size="15" font-weight="600" fill="#1F8F7E">4. Detailed task description &amp; rules</text><rect x="392" y="411.5" width="708" height="149.0" rx="8" fill="#E5F3F0" stroke="#1F8F7E" stroke-width="1.4"/><text x="408" y="437.0" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#1F8F7E" xml:space="preserve">Here are some important rules for the interaction:</text><text x="408" y="457.5" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#1F8F7E" xml:space="preserve">- Always stay in character, as Joe, an AI from AdAstra careers</text><text x="408" y="478.0" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#1F8F7E" xml:space="preserve">- If you are unsure how to respond, say &quot;Sorry, I didn&#x27;t understand that.</text><text x="408" y="498.5" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#1F8F7E" xml:space="preserve">Could you repeat the question?&quot;</text><text x="408" y="519.0" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#1F8F7E" xml:space="preserve">- If someone asks something irrelevant, say, &quot;Sorry, I am Joe and I give</text><text x="408" y="539.5" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#1F8F7E" xml:space="preserve">career advice. Do you have a career question today I can help you with?&quot;</text><rect x="40" y="574.5" width="320" height="46.5" rx="8" fill="#E8EFF8" stroke="#2F6FB3" stroke-width="1.4"/><text x="56" y="600.5" font-family="'Noto Sans KR', sans-serif" font-size="15" font-weight="600" fill="#2F6FB3">5. Examples</text><rect x="392" y="574.5" width="708" height="149.0" rx="8" fill="#E8EFF8" stroke="#2F6FB3" stroke-width="1.4"/><text x="408" y="600.0" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#2F6FB3" xml:space="preserve">Here is an example of how to respond in a standard interaction:</text><text x="408" y="620.5" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#2F6FB3" xml:space="preserve">&lt;example&gt;</text><text x="408" y="641.0" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#2F6FB3" xml:space="preserve">User: Hi, how were you created and what do you do?</text><text x="408" y="661.5" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#2F6FB3" xml:space="preserve">Joe: Hello! My name is Joe, and I was created by AdAstra Careers to give</text><text x="408" y="682.0" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#2F6FB3" xml:space="preserve">career advice. What can I help you with today?</text><text x="408" y="702.5" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#2F6FB3" xml:space="preserve">&lt;/example&gt;</text><rect x="40" y="737.5" width="320" height="46.5" rx="8" fill="#F0EBF7" stroke="#7A5BA8" stroke-width="1.4"/><text x="56" y="763.5" font-family="'Noto Sans KR', sans-serif" font-size="15" font-weight="600" fill="#7A5BA8">6. Conversation history</text><rect x="392" y="737.5" width="708" height="87.5" rx="8" fill="#F0EBF7" stroke="#7A5BA8" stroke-width="1.4"/><text x="408" y="763.0" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#7A5BA8" xml:space="preserve">Here is the conversation history (between the user and you) prior to the</text><text x="408" y="783.5" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#7A5BA8" xml:space="preserve">question. It could be empty if there is no history:</text><text x="408" y="804.0" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#7A5BA8" xml:space="preserve">&lt;history&gt; {{HISTORY}} &lt;/history&gt;</text><rect x="40" y="839.0" width="320" height="67.0" rx="8" fill="#F9E9F1" stroke="#BC417C" stroke-width="1.4"/><text x="56" y="865.0" font-family="'Noto Sans KR', sans-serif" font-size="15" font-weight="600" fill="#BC417C">7. Immediate task description or</text><text x="56" y="885.5" font-family="'Noto Sans KR', sans-serif" font-size="15" font-weight="600" fill="#BC417C">request</text><rect x="392" y="839.0" width="708" height="46.5" rx="8" fill="#F9E9F1" stroke="#BC417C" stroke-width="1.4"/><text x="408" y="864.5" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#BC417C" xml:space="preserve">Here is the user&#x27;s question: &lt;question&gt; {{QUESTION}} &lt;/question&gt;</text><rect x="40" y="920.0" width="320" height="67.0" rx="8" fill="#FBECEA" stroke="#C0392B" stroke-width="1.4"/><text x="56" y="946.0" font-family="'Noto Sans KR', sans-serif" font-size="15" font-weight="600" fill="#C0392B">8. Thinking step by step / take a</text><text x="56" y="966.5" font-family="'Noto Sans KR', sans-serif" font-size="15" font-weight="600" fill="#C0392B">deep breath</text><rect x="392" y="920.0" width="708" height="67.0" rx="8" fill="#FBECEA" stroke="#C0392B" stroke-width="1.4"/><text x="408" y="945.5" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#C0392B" xml:space="preserve">How do you respond to the user&#x27;s question?</text><text x="408" y="966.0" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#C0392B" xml:space="preserve">Think about your answer first before you respond.</text><rect x="40" y="1001.0" width="320" height="46.5" rx="8" fill="#F1F1F1" stroke="#6E6E6E" stroke-width="1.4"/><text x="56" y="1027.0" font-family="'Noto Sans KR', sans-serif" font-size="15" font-weight="600" fill="#6E6E6E">9. Output formatting</text><rect x="392" y="1001.0" width="708" height="46.5" rx="8" fill="#F1F1F1" stroke="#6E6E6E" stroke-width="1.4"/><text x="408" y="1026.5" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#6E6E6E" xml:space="preserve">Put your response in &lt;response&gt;&lt;/response&gt; tags.</text><rect x="40" y="1061.5" width="320" height="46.5" rx="8" fill="#E6E6E6" stroke="#2B2B2B" stroke-width="1.4"/><text x="56" y="1087.5" font-family="'Noto Sans KR', sans-serif" font-size="15" font-weight="600" fill="#2B2B2B">10. Prefilled response (if any)</text><rect x="392" y="1061.5" width="708" height="67.0" rx="8" fill="#E6E6E6" stroke="#2B2B2B" stroke-width="1.4"/><text x="408" y="1087.0" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#2B2B2B" xml:space="preserve">Assistant (prefill)</text><text x="408" y="1107.5" font-family="'JetBrains Mono', monospace" font-size="14.5" fill="#2B2B2B" xml:space="preserve">&lt;response&gt;</text></svg>
+          <figcaption>좌측 = 스택 이름, 우측 = 실제 프롬프트 문구. 색이 같은 행이 한 스택이다.</figcaption>
+        </figure>
+      </section>
+
+      <!-- 4 -->
+      <section id="s4">
+        <h2 class="sec"><span class="n">04</span>각 스택 상세 (1–10)<span class="lvl">레퍼런스</span></h2>
+        <p>스택마다 <strong>개념 · 무엇을 입력하나 · 예시 문구 · 개발 팁</strong>을 정리했습니다.</p>
+
+        <h3><span class="dot" style="background:#C0392B"></span>1. Task context — 역할과 임무</h3>
+        <p><strong>개념.</strong> AI에게 <em>누구이고 무엇을 하는가</em>를 가장 먼저 못 박습니다. persona를 부여하면 톤·어휘·판단 기준이 한 방향으로 정렬됩니다.<br>
+           <strong>입력.</strong> 정체성 + 목표 + 사용 맥락(누구를 상대로 응답하는가).</p>
+        <pre><code>You will be acting as an AI career coach named Joe created by the company
+AdAstra Careers. Your goal is to give career advice to users. You will be
+replying to users who are on the AdAstra site...</code></pre>
+        <div class="note"><div class="t">개발 팁</div><p>코딩 어시스턴트라면 <code class="inline">너는 {{기술스택}}에 능숙한 시니어 리뷰어다</code>처럼 <strong>역할 + 도메인 + 책임 범위</strong>를 한 문장으로.</p></div>
+
+        <h3><span class="dot" style="background:#B9770E"></span>2. Tone context — 말투</h3>
+        <p><strong>개념.</strong> 응답의 정서·격식 수준을 지정. 챗 인터페이스에서 특히 중요합니다.<br>
+           <strong>입력.</strong> 한 줄 톤 지시.</p>
+        <pre><code>You should maintain a friendly customer service tone.</code></pre>
+        <div class="note"><div class="t">개발 팁</div><p>리뷰·분석 작업엔 <code class="inline">사실 기반, 간결, 자신감 있게. 리스크 먼저, 권고는 그 다음</code>처럼 <strong>순서까지</strong> 톤에 담으면 출력 구조가 안정됩니다.</p></div>
+
+        <h3><span class="dot" style="background:#4F8A3D"></span>3. Background data — 배경 데이터</h3>
+        <p><strong>개념.</strong> AI가 <em>참조</em>할 외부 정보(=context). 지시가 아니라 <strong>자료</strong>입니다.<br>
+           <strong>입력.</strong> 문서·코드 diff·이미지·검색 결과 등. <strong>각 자료를 개별 XML 태그로</strong> 감싸 경계를 분리합니다.</p>
+        <pre><code>Here is the career guidance document you should reference when answering the
+user: &lt;guide&gt;{{DOCUMENT}}&lt;/guide&gt;</code></pre>
+        <div class="note"><div class="t">개발 팁</div><p>여러 자료는 <code class="inline">&lt;diff&gt;…&lt;/diff&gt;</code> <code class="inline">&lt;tests&gt;…&lt;/tests&gt;</code>처럼 <strong>태그를 나눠</strong> 넣어야 혼동이 없습니다. 큰 데이터는 맨 위보다 <strong>이 중간 위치</strong>가 권장됩니다.</p></div>
+
+        <h3><span class="dot" style="background:#1F8F7E"></span>4. Task description &amp; rules — 규칙</h3>
+        <p><strong>개념.</strong> 상호작용의 <em>행동 규칙·금지사항</em>을 리스트로. 모델의 과잉/이탈을 막는 가드레일입니다.<br>
+           <strong>입력.</strong> "항상 ~하라", "모르면 ~라고 답하라", "~는 하지 마라" 형태의 명시적 규칙.</p>
+        <pre><code>Here are some important rules for the interaction:
+- Always stay in character, as Joe, an AI from AdAstra Careers
+- If you are unsure how to respond, say "Sorry, I didn't understand that..."
+- If someone asks something irrelevant, say, "Sorry, I am Joe and I give
+  career advice..."</code></pre>
+        <div class="note"><div class="t">개발 팁</div><p><strong>부정형 제약</strong>(<code class="inline">코드를 임의로 재작성하지 마</code>, <code class="inline">새 엔드포인트 추가 금지</code>)이 특히 효과적입니다. 폴백 응답("모르면 ~")을 미리 정의해 두면 환각을 줄입니다.</p></div>
+
+        <h3><span class="dot" style="background:#2F6FB3"></span>5. Examples — 예시 (few-shot)</h3>
+        <p><strong>개념.</strong> 말로 설명하는 대신 <em>이상적 입출력</em>을 보여줍니다. 강의에서 <strong>"지식 작업에서 가장 효과적인 단일 도구"</strong>로 강조합니다.<br>
+           <strong>입력.</strong> <code class="inline">&lt;example&gt;</code> 태그로 감싼 User→응답 쌍. 엣지 케이스 예시가 가장 가치 높습니다.</p>
+        <pre><code>Here is an example of how to respond in a standard interaction:
+&lt;example&gt;
+User: Hi, how were you created and what do you do?
+Joe: Hello! My name is Joe, and I was created by AdAstra Careers...
+&lt;/example&gt;</code></pre>
+        <div class="note"><div class="t">개발 팁</div><p>예시 여러 개면 각각 별도 태그로 감싸고 <strong>무엇의 예시인지</strong> 라벨을 다세요. 코드 스타일 통일엔 설명보다 예시 1~2개가 빠르고 정확합니다.</p></div>
+
+        <h3><span class="dot" style="background:#7A5BA8"></span>6. Conversation history — 대화 히스토리</h3>
+        <p><strong>개념.</strong> 직전까지의 멀티턴 맥락 주입. 비어 있을 수 있음을 명시합니다.<br>
+           <strong>입력.</strong> <code class="inline">&lt;history&gt;</code> 태그 + 동적 변수.</p>
+        <pre><code>Here is the conversation history... It could be empty if there is no history:
+&lt;history&gt; {{HISTORY}} &lt;/history&gt;</code></pre>
+        <div class="note"><div class="t">개발 팁</div><p>히스토리가 길면 <strong>Context Rot</strong>(맥락 누적 노이즈로 정확도 저하)을 유발합니다. 전체를 그대로 넣기보다 요약·슬라이딩 윈도우로 관리하세요.</p></div>
+
+        <h3><span class="dot" style="background:#BC417C"></span>7. Immediate request — 즉시 요청</h3>
+        <p><strong>개념.</strong> <em>지금 이 순간 처리할 실제 요청</em>. 위의 1~6은 고정 골격, 이 블록만 매 호출 바뀝니다.<br>
+           <strong>입력.</strong> <code class="inline">&lt;question&gt;</code> 태그 + 동적 변수.</p>
+        <pre><code>Here is the user's question: &lt;question&gt; {{QUESTION}} &lt;/question&gt;</code></pre>
+        <div class="note"><div class="t">개발 팁</div><p>1~6을 <code class="inline">CLAUDE.md</code>/시스템 프롬프트의 <strong>영구 골격</strong>으로, 6·7을 <strong>세션 동적 입력</strong>으로 분리하면 재사용성이 올라갑니다.</p></div>
+
+        <h3><span class="dot" style="background:#C0392B"></span>8. Thinking step by step — 추론 유도</h3>
+        <p><strong>개념.</strong> 답하기 전에 먼저 생각하게 만드는 Chain-of-Thought.<br>
+           <strong>입력.</strong> "먼저 생각하라"는 지시.</p>
+        <pre><code>How do you respond to the user's question?
+Think about your answer first before you respond.</code></pre>
+        <div class="note warn"><div class="t">⚠️ 최신 보충 (중요)</div><p>Opus 4.x / Sonnet 4.5 등 최신 모델에서는 수동 CoT보다 <strong>extended thinking</strong> 기능 사용이 공식 권장됩니다. 강의 슬라이드는 이 기능 보편화 이전 표준이므로, 최신 모델에선 <strong>extended thinking으로 대체</strong>하세요.</p></div>
+
+        <h3><span class="dot" style="background:#6E6E6E"></span>9. Output formatting — 출력 형식</h3>
+        <p><strong>개념.</strong> 응답의 구조·형식을 강제. 후속 자동 파싱을 위해 필수적입니다.<br>
+           <strong>입력.</strong> 형식 지시(XML 태그, JSON 스키마 등).</p>
+        <pre><code>Put your response in &lt;response&gt;&lt;/response&gt; tags.</code></pre>
+        <div class="note"><div class="t">개발 팁</div><p>파이프라인에 물릴 출력은 <code class="inline">&lt;review&gt;심각도 | 위치 | 설명 | 권고&lt;/review&gt;</code>처럼 <strong>파싱 가능한 형식</strong>을 명시하세요.</p></div>
+
+        <h3><span class="dot" style="background:#2B2B2B"></span>10. Prefilled response — 프리필</h3>
+        <p><strong>개념.</strong> Assistant 답변의 <strong>첫 부분을 미리 채워</strong> 형식·태도를 고정하고 군더더기(preamble)를 생략시키는 고급 기법.<br>
+           <strong>입력.</strong> Assistant 턴 선두 토큰.</p>
+        <pre><code>Assistant (prefill)
+&lt;response&gt;</code></pre>
+        <div class="note"><div class="t">개발 팁</div><p><code class="inline">&lt;response&gt;</code>까지 미리 넣으면 모델이 곧바로 본문부터 출력합니다. JSON 강제 시 <code class="inline">{</code>를 prefill하면 서두 잡설을 막습니다.</p></div>
+      </section>
+
+      <!-- 5 -->
+      <section id="s5">
+        <h2 class="sec"><span class="n">05</span>개발자용 변형 — 코드 리뷰 어시스턴트<span class="lvl">실무</span></h2>
+        <p>강의 구조를 그대로 실무 프롬프트로 옮긴 예입니다. (대괄호 안 번호 = 위 10단계)</p>
+        <pre><code><span class="c">[1 Task]</span>    너는 {{기술스택}}에 능숙한 엄격한 코드 리뷰어다.
+<span class="c">[2 Tone]</span>    전문적·간결. 리스크 먼저, 권고는 그 다음.
+<span class="c">[3 Data]</span>    &lt;diff&gt;{{이 PR의 git diff}}&lt;/diff&gt;
+            &lt;tests&gt;{{관련 테스트/CI 로그}}&lt;/tests&gt;
+<span class="c">[4 Rules]</span>   - 보안 → 성능 → 가독성 → 타입 안정성 순으로 검토
+            - 근거 없는 추측 금지. 확인 불가 항목은 "확인 불가"로 표기
+            - 코드를 임의로 재작성하지 말 것
+<span class="c">[5 Example]</span> &lt;example&gt;
+            지적: SQL 문자열 직접 결합 → 인젝션 위험
+            권고: 파라미터 바인딩 사용
+            &lt;/example&gt;
+<span class="c">[7 Request]</span> &lt;question&gt;{{리뷰 요청 내용}}&lt;/question&gt;
+<span class="c">[8 Think]</span>   지적 전에 영향 범위를 먼저 분석하라. (※최신 모델은 extended thinking)
+<span class="c">[9 Format]</span>  &lt;review&gt;심각도 | 위치 | 설명 | 권고&lt;/review&gt; 표로 출력.
+<span class="c">[10 Prefill]</span>&lt;review&gt;</code></pre>
+        <div class="note">
+          <div class="t">활용 워크플로 (권장 순서)</div>
+          <p>① <strong>골격 먼저</strong> — 1·2·9·10만 채워 동작 확인 → 템플릿화 ·
+             ② <strong>데이터 주입</strong> — 3에 diff·로그를 XML 태그로 분리 ·
+             ③ <strong>규칙·예시 반복 개선</strong> — 4·5를 결과 보며 튜닝(엣지 케이스 예시가 최고 ROI) ·
+             ④ <strong>분리 배치</strong> — 1·2·4·9는 <code class="inline">CLAUDE.md</code> 영구 규칙, 3·6·7은 세션 동적 입력.</p>
+        </div>
+      </section>
+
+      <!-- 6 -->
+      <section id="s6">
+        <h2 class="sec"><span class="n">06</span>프롬프트 실전 예시 모음<span class="lvl">실무</span></h2>
+        <p>기법별로 <strong>"상황 → 실제 프롬프트 → 왜 좋은가"</strong>를 묶었습니다. 그대로 복사해 쓰고, 본인 작업에 맞게 변수만 바꿔 보세요.</p>
+
+        <h3>① 제로샷 — 빠른 리팩토링</h3>
+        <p><strong>상황.</strong> 의도가 명확하고 단순한 작업. 예시 없이 바로 지시합니다.</p>
+        <pre><code>이 코드를 OOP 원칙에 맞게 리팩토링하고 테스트케이스도 작성해줘.</code></pre>
+        <div class="note"><div class="t">왜 좋은가</div><p>군더더기 없이 한 문장. 단순 작업에 예시·맥락을 붙이면 토큰만 낭비됩니다. <strong>"OOP 원칙", "테스트케이스"</strong>처럼 판단 기준을 한 단어씩 박아준 게 포인트.</p></div>
+
+        <h3>② 퓨샷 — 스키마 기반 CRUD 생성</h3>
+        <p><strong>상황.</strong> 산출물의 <strong>형식·컨벤션</strong>을 정확히 맞춰야 할 때. 기준이 되는 예시(스키마)를 <strong>파일로 첨부</strong>해 토큰을 아낍니다.</p>
+        <pre><code><span class="c"># support_contacts 테이블 스키마를 파일로 첨부(@table.sql) 후:</span>
+
+@table.sql 을 참고해서 SupportController, service, repository를
+코드베이스 컨벤션을 참고해 CRUD로 만들고 Entity도 만들어줘.
+컨트롤러에는 프론트에서 호출할 수 있는 HttpClient 호출 스펙을 주석으로 정리해줘.</code></pre>
+        <div class="note"><div class="t">왜 좋은가</div><p>구체적 예시(SQL 스키마)가 출력의 <strong>일관성·정확성</strong>을 끌어올립니다. "코드베이스 컨벤션 참고"로 기존 스타일에 맞추게 했고, <strong>파일 첨부</strong>로 같은 정보를 더 싸게 전달했습니다. 단순하면 제로샷, 정밀도가 필요하면 이렇게 퓨샷으로 올립니다.</p></div>
+
+        <h3>③ 생각의 사슬(CoT) — 에러 추적 디버깅</h3>
+        <p><strong>상황.</strong> 원인이 한눈에 안 보이는 런타임 에러. 모델이 <strong>단계적으로 추적</strong>하게 유도합니다.</p>
+        <pre><code>이 코드 실행 중간에 에러가 발생해. 코드 실행 전후로 로깅을 남기고,
+그 로깅을 읽어서 순차적으로 로직이 제대로 된 값을 호출·전달하는지 추적해줘.
+에러 로그가 나오면 원인이 뭔지 파악한 뒤 근본적인 해결책을 제시해줘.</code></pre>
+        <div class="note"><div class="t">왜 좋은가</div><p>"로깅 → 읽기 → 순차 추적 → 원인 → 해결"이라는 <strong>사고 단계를 명시</strong>해 한 번에 답으로 건너뛰지 못하게 했습니다. 최신 모델에선 같은 효과를 <strong>extended thinking</strong>으로 얻을 수 있습니다.</p></div>
+
+        <h3>④ 문제 분해 — 로그인 기능 단계화</h3>
+        <p><strong>상황.</strong> 여러 책임이 섞인 기능. 큰 작업을 <strong>작은 단위로 쪼개</strong> 품질을 올립니다.</p>
+        <pre><code>로그인 처리는 다음과 같아. 이 로직을 구현해줘.
+1) 입력에서 아이디·패스워드를 받는다. 아이디는 이메일 포맷 validation,
+   패스워드는 4글자 이상이면 유효로 판단.
+2) 서버 전송 시 인증 요청 처리 — 실패면 토스트 메시지, 성공이면 토큰 발급 +
+   쿠키 설정 후 응답 반환.
+3) 성공 페이지는 xxx로 이동하고, 이동 시 사용자 정보를 조회해 등급·닉네임·랭킹을
+   회원 정보 드롭다운에 표시.</code></pre>
+        <div class="note"><div class="t">왜 좋은가</div><p>각 단계의 <strong>입력·처리·출력</strong>을 분리해 명시하니, 모델이 한 덩어리로 뭉개지 않고 단계별로 정확히 구현합니다. 시스템 설계·연동처럼 범위가 큰 작업에 특히 효과적입니다.</p></div>
+
+        <h3>⑤ ReAct — 연동 실패 자율 디버깅</h3>
+        <p><strong>상황.</strong> 원인 후보가 많은 외부 연동 실패. 모델이 <strong>추론하고 직접 행동(탐색·재시도)</strong>하며 좁혀가게 합니다.</p>
+        <pre><code>RabbitMQ 연동에 계속 실패해. 설정 파일을 분석해서 어디서 연동이 안 되는지 파악하고,
+샘플 코드 실행이 안 되면 공식 문서를 참조해 설정 값을 바꿔 다시 테스트해줘.
+문제가 발생하면 해당 코드 전후로 로깅을 남기고, 그 로깅을 읽어서
+어떤 문제가 있고 어떻게 해결해야 하는지 리포팅해줘.</code></pre>
+        <div class="note"><div class="t">왜 좋은가</div><p>"분석 → 수정 → 재테스트 → 로깅 → 리포팅"의 <strong>추론·행동 루프</strong>를 명시해, 한 번의 추측이 아니라 <strong>탐색하며 수렴</strong>하게 만듭니다. 공식 문서 참조까지 허용해 자율 디버깅 범위를 넓혔습니다.</p></div>
+
+        <div class="note">
+          <div class="t">기법 고르는 한 줄 기준</div>
+          <p>명확·단순 → <strong>제로샷</strong> · 형식 정확성 → <strong>퓨샷</strong> · 추적형 디버깅 → <strong>CoT</strong> ·
+             범위 큰 구현 → <strong>문제 분해</strong> · 탐색형 연동/에이전트 → <strong>ReAct</strong>.
+             그리고 재사용할 프롬프트라면 <a class="link" href="#s2">10단계 구조</a>로 골격을 잡으세요.</p>
+        </div>
+      </section>
+
+      <!-- 부록 -->
+      <section id="appendix">
+        <h2 class="sec"><span class="n">+</span>부록 — 진입 순서 · 출처</h2>
+
+        <h3>A. 개발자 진입 순서 (요약)</h3>
+        <pre><code>1단계  골격     →  1·2·9·10 (정체성·톤·출력형식·prefill)  → 바로 동작 확인
+2단계  데이터   →  3 에 diff·문서·로그를 XML 태그로 분리 투입
+3단계  반복개선 →  4·5 (규칙·예시) 를 결과 보며 튜닝 (엣지 케이스 예시 = 최고 ROI)
+4단계  분리배치 →  1·2·4·9 = CLAUDE.md 영구 규칙 / 3·6·7 = 세션 동적 입력</code></pre>
+
+        <h3>B. 공식 출처 (링크 유효성 확인 완료)</h3>
+        <ul>
+          <li>Anthropic — Prompt Library: Career coach (Joe 원문) — <a class="link" href="https://docs.claude.com/en/resources/prompt-library/career-coach">docs.claude.com · career-coach</a></li>
+          <li>Anthropic — Prompt engineering overview — <a class="link" href="https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/overview">docs.claude.com · prompt-engineering/overview</a></li>
+          <li>AWS Bedrock 블로그 — 10단계 구조 명칭·순서 출처 — <a class="link" href="https://aws.amazon.com/blogs/machine-learning/prompt-engineering-techniques-and-best-practices-learn-by-doing-with-anthropics-claude-3-on-amazon-bedrock/">aws.amazon.com · prompt-engineering-techniques</a></li>
+          <li>AWS 샘플 노트북 — Joe 프롬프트 빌드업 — <a class="link" href="https://github.com/aws-samples/prompt-engineering-with-anthropic-claude-v-3/blob/main/09_Complex_Prompts_from_Scratch.ipynb">github.com · 09_Complex_Prompts_from_Scratch</a></li>
+          <li>"Prompting 101" 정리(Hannah·Christian = 다이어그램 출처) — <a class="link" href="https://dev.to/bokuno_log/anthropics-prompting-101-a-practical-guide-to-building-production-quality-claude-prompts-23k4">dev.to · anthropics-prompting-101</a></li>
+        </ul>
+      </section>
+
+      <footer>
+        다이어그램은 Anthropic "Prompting 101" 강의의 Career coach(Joe) 예시 기준이며, HTML에 SVG로 직접 임베드되어 외부 경로 없이 표시됩니다.
+        8번 스택(수동 CoT)은 최신 모델에서 extended thinking으로 대체하는 것이 공식 권장입니다.
+      </footer>
+
+    </main>
+  </div>
+</div>
+
+<script>
+  // 코드 블록 복사 버튼
+  document.querySelectorAll('pre').forEach(function (pre) {
+    var btn = document.createElement('button');
+    btn.className = 'copy'; btn.type = 'button'; btn.textContent = '복사';
+    btn.addEventListener('click', function () {
+      var codeEl = pre.querySelector('code');
+      var text = codeEl ? codeEl.innerText : pre.innerText;
+      navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = '복사됨';
+        setTimeout(function () { btn.textContent = '복사'; }, 1200);
+      }).catch(function () {
+        btn.textContent = '복사 실패';
+        setTimeout(function () { btn.textContent = '복사'; }, 1200);
+      });
+    });
+    pre.appendChild(btn);
+  });
+
+  // 목차 현재 위치 표시
+  var tocLinks = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  var linkMap = {};
+  tocLinks.forEach(function (a) { linkMap[a.getAttribute('href').slice(1)] = a; });
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) {
+        tocLinks.forEach(function (l) { l.classList.remove('active'); });
+        if (linkMap[e.target.id]) { linkMap[e.target.id].classList.add('active'); }
+      }
+    });
+  }, { rootMargin: '0px 0px -78% 0px' });
+  document.querySelectorAll('section[id]').forEach(function (s) { observer.observe(s); });
+</script>
+</body>
+</html>
