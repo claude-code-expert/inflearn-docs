@@ -23,7 +23,7 @@ lecture/
 ├── template/     ← AI 코딩 에이전트 지침 파일 템플릿 (CLAUDE.md / AGENTS.md 계열)
 ├── docs/         ← 개념 가이드 + TypeScript 템플릿 + HTML 가이드 + 스크린샷
 ├── example/      ← CLAUDE.md 철학 예제 (Karpathy / Kent Beck 스타일)
-├── project/      ← 설계 문서 예제 (PRD → TRD → REQUIREMENTS, 럭키드로우 앱)
+├── project/      ← 명세 → 구현 예제 (PRD → TRD → REQUIREMENTS → 단일 파일 앱)
 └── samples/      ← 바로 돌려보는 Hooks·Skill 샘플 3종
 ```
 
@@ -83,14 +83,16 @@ AI 코딩 에이전트(Claude Code, Cursor, Codex 등)에게 프로젝트 맥락
 
 > 둘 다 추측과 과잉 설계를 거부하지만, 한쪽은 *신중함*으로, 다른 한쪽은 *규율*로 접근한다. `docs/claude_template_ts/`의 Behavioral / Augmented 지침의 원형이다.
 
-### 📁 `project/luckydraw/` — 설계 문서 예제 (럭키드로우 앱)
-"기능 구현 전에 무엇을 문서화하는가"를 보여주는 3단 명세. **왜 → 어떻게 → 무엇을**의 흐름.
+### 📁 `project/luckydraw/` — 명세 → 구현 완결 예제 (럭키드로우 앱)
+"무엇을 문서화하고, 그 문서로 무엇을 만드는가"를 보여주는 4단 명세 + **단일 파일 구현**. 명세를 그대로 따라 빌드하면 동일한 앱이 재현된다.
 
 | 문서 | 계층 | 핵심 내용 |
 |------|------|----------|
-| `PRD.md` | 왜(Why) | 비즈니스 목표·사용자 시나리오·범위·성공 지표. "AI 흔적 없는 디자인" 원칙 |
-| `TRD.md` | 어떻게(How) | 단일 HTML·데이터 모델·룰렛 정지 각도 알고리즘·성능·접근성 |
-| `REQUIREMENTS.md` | 무엇을(What) | 기능 요구사항 F1–F12 + 안티-AI 디자인 규칙 + 41개 검증 체크리스트 |
+| `PRD.md` | 왜(Why) | 제품 목적·2단계 추첨 시나리오·범위·디자인 원칙 |
+| `TRD.md` | 어떻게(How) | 단일 HTML·데이터 모델·원판 정지 각도 알고리즘·재고 재배정·토큰 (기술 정본) |
+| `REQUIREMENTS.md` | 무엇을(What) | 기능 F1–F14 + 안티-AI 디자인 규칙 + 검증 체크리스트 |
+| `ANALYSIS.md` | 결정·이력 | 확정 결정·기존안 대비 변경 이력·핵심 불변식 |
+| `lucky-draw.html` | 산출물 | 위 명세를 구현한 **단일 파일 앱**(2단계 추첨, 외부 의존성 0) |
 
 ### 📁 `samples/` — 바로 실행하는 Hooks·Skill 샘플
 
@@ -127,8 +129,8 @@ AI 코딩 에이전트(Claude Code, Cursor, Codex 등)에게 프로젝트 맥락
    └─────────────────────┘             └──────────────────────┘
 
    ┌─────────────────────────────────────────────────────────┐
-   │  project/luckydraw/  — 위 지침을 따라 만들 "대상 산출물"의     │
-   │  설계 문서 예제 (PRD → TRD → REQUIREMENTS)                 │ 
+   │  project/luckydraw/  — 명세 4종 + 그대로 구현한 산출물        │
+   │  (PRD → TRD → REQUIREMENTS → ANALYSIS → lucky-draw.html)  │ 
    └─────────────────────────────────────────────────────────┘
 ```
 
@@ -137,7 +139,7 @@ AI 코딩 에이전트(Claude Code, Cursor, Codex 등)에게 프로젝트 맥락
 - **철학 → 지침**: `example/`의 Karpathy·Kent Beck 스타일이 `docs/claude_template_ts/`(Behavioral·Augmented)와 `template/`의 Investigation/Recovery 규칙으로 구체화된다.
 - **가이드 ↔ 샘플**: `docs/guide/`의 각 가이드는 `samples/`의 실행 코드와 1:1로 짝을 이룬다(Gemini 리뷰·Handoff·Slack 알림).
 - **지침 → Hooks**: `template/README.md` §4(멀티턴 방어)의 Hooks 설계가 `samples/`의 Hooks 구현으로 이어진다.
-- **명세 → 구현**: `project/luckydraw/`는 위 지침·습관을 적용해 만들 산출물의 설계 문서 표준을 보여준다.
+- **명세 → 구현**: `project/luckydraw/`는 PRD·TRD·REQUIREMENTS·ANALYSIS 명세와, 그 명세를 그대로 구현한 `lucky-draw.html`까지 한 쌍으로 보여준다.
 
 ---
 
@@ -147,7 +149,7 @@ AI 코딩 에이전트(Claude Code, Cursor, Codex 등)에게 프로젝트 맥락
 2. **`template/README.md`** — 내 프로젝트 유형에 맞는 지침 파일 조합 선택, 멀티턴 방어 4계층 이해
 3. **`docs/claude_template_ts/`** — TypeScript 실전 지침 세트로 계층형 규칙 구조 학습
 4. **`docs/guide/` + `samples/`** — Hooks·Skill을 가이드로 이해하고 샘플로 직접 실행
-5. **`project/luckydraw/`** — 실제 기능을 만들기 전 PRD/TRD/요구사항 명세 작성법 익히기
+5. **`project/luckydraw/`** — PRD/TRD/요구사항 명세 작성법을 익히고, 그 명세로 구현된 `lucky-draw.html`로 "명세 → 산출물" 연결 확인하기
 
 ---
 
