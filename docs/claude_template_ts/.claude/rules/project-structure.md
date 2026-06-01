@@ -18,7 +18,10 @@
 │   ├── lib/             # shared utilities
 │   └── index.ts         # entry point
 ├── tests/               # mirrors src/ structure
-├── .claude/rules/       # project guidelines (this folder)
+├── CLAUDE.md            # root baseline guidelines (imports .claude/rules/*)
+├── .claude/             # Claude Code config
+│   ├── rules/           # project guidelines (this folder; imported by CLAUDE.md)
+│   └── templates/       # alternative CLAUDE.md baselines (reference only)
 ├── package.json
 ├── tsconfig.json
 └── CHANGELOG.md
