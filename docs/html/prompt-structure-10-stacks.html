@@ -325,12 +325,12 @@ Think about your answer first before you respond.</code></pre>
         <h2 class="sec"><span class="n">06</span>프롬프트 실전 예시 모음<span class="lvl">실무</span></h2>
         <p>기법별로 <strong>"상황 → 실제 프롬프트 → 왜 좋은가"</strong>를 묶었습니다. 그대로 복사해 쓰고, 본인 작업에 맞게 변수만 바꿔 보세요.</p>
 
-        <h3>① 제로샷 — 빠른 리팩토링</h3>
+        <h3>① 제로샷 (Zero-Shot) — 빠른 리팩토링</h3>
         <p><strong>상황.</strong> 의도가 명확하고 단순한 작업. 예시 없이 바로 지시합니다.</p>
         <pre><code>이 코드를 OOP 원칙에 맞게 리팩토링하고 테스트케이스도 작성해줘.</code></pre>
         <div class="note"><div class="t">왜 좋은가</div><p>군더더기 없이 한 문장. 단순 작업에 예시·맥락을 붙이면 토큰만 낭비됩니다. <strong>"OOP 원칙", "테스트케이스"</strong>처럼 판단 기준을 한 단어씩 박아준 게 포인트.</p></div>
 
-        <h3>② 퓨샷 — 스키마 기반 CRUD 생성</h3>
+        <h3>② 퓨샷 (Few-Shot) — 스키마 기반 CRUD 생성</h3>
         <p><strong>상황.</strong> 산출물의 <strong>형식·컨벤션</strong>을 정확히 맞춰야 할 때. 기준이 되는 예시(스키마)를 <strong>파일로 첨부</strong>해 토큰을 아낍니다.</p>
         <pre><code><span class="c"># support_contacts 테이블 스키마를 파일로 첨부(@table.sql) 후:</span>
 
@@ -339,14 +339,14 @@ Think about your answer first before you respond.</code></pre>
 컨트롤러에는 프론트에서 호출할 수 있는 HttpClient 호출 스펙을 주석으로 정리해줘.</code></pre>
         <div class="note"><div class="t">왜 좋은가</div><p>구체적 예시(SQL 스키마)가 출력의 <strong>일관성·정확성</strong>을 끌어올립니다. "코드베이스 컨벤션 참고"로 기존 스타일에 맞추게 했고, <strong>파일 첨부</strong>로 같은 정보를 더 싸게 전달했습니다. 단순하면 제로샷, 정밀도가 필요하면 이렇게 퓨샷으로 올립니다.</p></div>
 
-        <h3>③ 생각의 사슬(CoT) — 에러 추적 디버깅</h3>
+        <h3>③ 생각의 사슬 (Chain-of-Thought, CoT) — 에러 추적 디버깅</h3>
         <p><strong>상황.</strong> 원인이 한눈에 안 보이는 런타임 에러. 모델이 <strong>단계적으로 추적</strong>하게 유도합니다.</p>
         <pre><code>이 코드 실행 중간에 에러가 발생해. 코드 실행 전후로 로깅을 남기고,
 그 로깅을 읽어서 순차적으로 로직이 제대로 된 값을 호출·전달하는지 추적해줘.
 에러 로그가 나오면 원인이 뭔지 파악한 뒤 근본적인 해결책을 제시해줘.</code></pre>
         <div class="note"><div class="t">왜 좋은가</div><p>"로깅 → 읽기 → 순차 추적 → 원인 → 해결"이라는 <strong>사고 단계를 명시</strong>해 한 번에 답으로 건너뛰지 못하게 했습니다. 최신 모델에선 같은 효과를 <strong>extended thinking</strong>으로 얻을 수 있습니다.</p></div>
 
-        <h3>④ 문제 분해 — 로그인 기능 단계화</h3>
+        <h3>④ 문제 분해 (Problem Decomposition) — 로그인 기능 단계화</h3>
         <p><strong>상황.</strong> 여러 책임이 섞인 기능. 큰 작업을 <strong>작은 단위로 쪼개</strong> 품질을 올립니다.</p>
         <pre><code>로그인 처리는 다음과 같아. 이 로직을 구현해줘.
 1) 입력에서 아이디·패스워드를 받는다. 아이디는 이메일 포맷 validation,
@@ -357,7 +357,7 @@ Think about your answer first before you respond.</code></pre>
    회원 정보 드롭다운에 표시.</code></pre>
         <div class="note"><div class="t">왜 좋은가</div><p>각 단계의 <strong>입력·처리·출력</strong>을 분리해 명시하니, 모델이 한 덩어리로 뭉개지 않고 단계별로 정확히 구현합니다. 시스템 설계·연동처럼 범위가 큰 작업에 특히 효과적입니다.</p></div>
 
-        <h3>⑤ ReAct — 연동 실패 자율 디버깅</h3>
+        <h3>⑤ ReAct (Reason + Act) — 연동 실패 자율 디버깅</h3>
         <p><strong>상황.</strong> 원인 후보가 많은 외부 연동 실패. 모델이 <strong>추론하고 직접 행동(탐색·재시도)</strong>하며 좁혀가게 합니다.</p>
         <pre><code>RabbitMQ 연동에 계속 실패해. 설정 파일을 분석해서 어디서 연동이 안 되는지 파악하고,
 샘플 코드 실행이 안 되면 공식 문서를 참조해 설정 값을 바꿔 다시 테스트해줘.
@@ -367,8 +367,10 @@ Think about your answer first before you respond.</code></pre>
 
         <div class="note">
           <div class="t">기법 고르는 한 줄 기준</div>
-          <p>명확·단순 → <strong>제로샷</strong> · 형식 정확성 → <strong>퓨샷</strong> · 추적형 디버깅 → <strong>CoT</strong> ·
-             범위 큰 구현 → <strong>문제 분해</strong> · 탐색형 연동/에이전트 → <strong>ReAct</strong>.
+          <p>명확·단순 → <strong>제로샷(Zero-Shot)</strong> · 형식 정확성 → <strong>퓨샷(Few-Shot)</strong> ·
+             추적형 디버깅 → <strong>생각의 사슬(Chain-of-Thought, CoT)</strong> ·
+             범위 큰 구현 → <strong>문제 분해(Problem Decomposition)</strong> ·
+             탐색형 연동/에이전트 → <strong>ReAct(Reason + Act)</strong>.
              그리고 재사용할 프롬프트라면 <a class="link" href="#s2">10단계 구조</a>로 골격을 잡으세요.</p>
         </div>
       </section>
