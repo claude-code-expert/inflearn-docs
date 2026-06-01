@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Git · GitHub 활용하기 — 가입부터 토큰 인증·브랜치 전략까지</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  /* 폰트 선택 이유: 한글 장문 가독성을 위해 본문 Noto Sans KR, 명령어·경로는 고정폭 JetBrains Mono로 분리해
+     "읽는 글"과 "입력하는 명령"을 시각적으로 구분한다. */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --text:   #111111;
+    --muted:  #6B7280;
+    --border: #E5E7EB;
+    --bg:     #FFFFFF;
+    --code-bg:#F3F4F6;
+    --soft-bg:#F8F7F4;
+    --accent: #B45309;   /* 단일 액센트(deep amber) — 링크·강조·중요 노드에만 사용 */
+  }
+
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 17px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* 워터마크 — 화면 전체에 옅게 반복(클릭 방해 없음) */
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: 9999; pointer-events: none; opacity: .05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='240'%3E%3Ctext x='15' y='130' font-family='monospace' font-size='15' fill='%23111111' transform='rotate(-30 180 120)'%3Erun-ai.kr%20%20%20brewnet.dev@gmail.com%3C/text%3E%3C/svg%3E");
+    background-repeat: repeat;
+  }
+
+  /* ── 레이아웃: 본문 + 데스크탑 좌측 목차 ── */
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+  .layout { display: block; }
+  @media (min-width: 1040px) {
+    .layout { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 48px; align-items: start; }
+  }
+
+  /* ── 목차 ── */
+  .toc {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 16px;
+    margin: 24px 0;
+    font-size: 14px;
+  }
+  @media (min-width: 1040px) {
+    .toc { position: sticky; top: 24px; margin: 40px 0; max-height: calc(100vh - 60px); overflow: auto; }
+  }
+  .toc h2 { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+            font-family: 'JetBrains Mono', monospace; margin-bottom: 12px; }
+  .toc ol { list-style: none; counter-reset: t; }
+  .toc li { counter-increment: t; margin: 2px 0; }
+  .toc a {
+    display: block; padding: 5px 8px; color: var(--text); text-decoration: none;
+    border-left: 2px solid transparent; line-height: 1.4; border-radius: 0 4px 4px 0;
+  }
+  .toc a::before { content: counter(t, decimal-leading-zero) " "; color: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .toc a:hover { color: var(--accent); }
+  .toc a.active { color: var(--accent); border-left-color: var(--accent); background: var(--soft-bg); font-weight: 500; }
+
+  /* ── 헤더 ── */
+  header { padding: 56px 0 8px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+  .kicker { font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .14em;
+            text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+  h1 { font-size: 34px; font-weight: 900; line-height: 1.2; letter-spacing: -.02em; }
+  .lead { color: var(--muted); font-size: 17px; margin-top: 14px; max-width: 760px; }
+  .meta { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); margin-top: 18px; }
+
+  /* ── 본문 타이포 ── */
+  main { padding-bottom: 80px; }
+  section { padding-top: 48px; }
+  h2.sec { font-size: 25px; font-weight: 700; letter-spacing: -.02em; line-height: 1.3;
+           padding-bottom: 12px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+  h2.sec .n { font-family: 'JetBrains Mono', monospace; color: var(--accent); font-weight: 700; margin-right: 10px; }
+  h3 { font-size: 19px; font-weight: 700; margin: 32px 0 10px; }
+  h4 { font-size: 16px; font-weight: 700; margin: 22px 0 8px; }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0 12px 4px; padding-left: 22px; }
+  li { margin: 6px 0; }
+  strong { font-weight: 700; }
+  a.link { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; word-break: break-all; }
+
+  /* 난이도 라벨 — 색이 아닌 텍스트로 정보 전달 */
+  .lvl { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .06em;
+         color: var(--muted); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; vertical-align: middle;
+         margin-left: 10px; font-weight: 600; }
+
+  /* 코드 블록 + 복사 버튼 */
+  pre { position: relative; background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+        padding: 16px 18px; margin: 14px 0; overflow-x: auto;
+        font-family: 'JetBrains Mono', monospace; font-size: 13.5px; line-height: 1.7; }
+  pre code { font-family: inherit; white-space: pre; color: #1f2937; }
+  pre .c { color: var(--muted); }            /* 주석 */
+  pre .p { color: var(--accent); }           /* 강조 */
+  .copy { position: absolute; top: 8px; right: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px;
+          color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+          padding: 3px 9px; cursor: pointer; transition: color 120ms, border-color 120ms; }
+  .copy:hover { color: var(--accent); border-color: var(--accent); }
+  code.inline { font-family: 'JetBrains Mono', monospace; font-size: .9em; background: var(--code-bg);
+                border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; }
+
+  /* 콜아웃 — 단일 액센트 좌측 보더 + 연한 배경 */
+  .note { border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0;
+          background: var(--soft-bg); padding: 14px 18px; margin: 18px 0; }
+  .note .t { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+  .note p { margin: 4px 0; }
+  .note.warn { border-left-color: #B91C1C; }
+  .note.warn .t { color: #B91C1C; }
+
+  /* 표 */
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; margin: 16px 0; }
+  th { text-align: left; font-weight: 700; border-bottom: 2px solid var(--text); padding: 9px 12px; }
+  td { border-bottom: 1px solid var(--border); padding: 9px 12px; vertical-align: top; }
+  td code, th code { font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+
+  /* 스크린샷 / 다이어그램 */
+  figure { margin: 22px 0; border: 1px solid var(--border); border-radius: 8px; padding: 14px; background: #FCFBF8; }
+  figure img { display: block; width: 100%; height: auto; border-radius: 4px; border: 1px solid var(--border); }
+  figure svg { display: block; width: 100%; height: auto; }
+  figcaption { font-size: 13px; color: var(--muted); margin-top: 10px; text-align: center; }
+
+  footer { border-top: 1px solid var(--border); padding: 28px 0 60px; color: var(--muted); font-size: 13px; }
+  footer a { color: var(--accent); }
+
+  @media print {
+    .toc, .copy { display: none; }
+    body { font-size: 12pt; }
+    a.link::after { content: " (" attr(href) ")"; font-size: 9pt; color: #555; }
+    section { page-break-inside: auto; }
+    pre, table, figure { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">Appendix · Git &amp; GitHub</div>
+    <h1>Git · GitHub 활용하기</h1>
+    <p class="lead">버전관리의 개념부터 GitHub 가입, 맥(Apple Silicon 포함)에서의 Git 설치, 첫 커밋·푸시,
+       토큰 인증, 브랜치·Pull Request, 자주 쓰는 명령어 모음, 그리고 브랜치 관리 전략까지.
+       깃을 처음 다루는 분이 흐름을 이해하며 따라 할 수 있도록 단계별로 정리했습니다.</p>
+    <p class="meta">기준: GitHub.com (HTTPS 방식) · macOS · 내용 최신화 검증 2026-06</p>
+  </header>
+
+  <div class="layout">
+
+    <!-- ── 목차 ── -->
+    <nav class="toc" aria-label="목차">
+      <h2>목차</h2>
+      <ol>
+        <li><a href="#s0">버전관리와 GitHub</a></li>
+        <li><a href="#s1">GitHub 가입 &amp; 첫 리포지토리</a></li>
+        <li><a href="#s2">내 PC에 Git 설치하기 (macOS)</a></li>
+        <li><a href="#s3">첫 커밋과 푸시 — 인증의 변화</a></li>
+        <li><a href="#s4">Personal Access Token 발급</a></li>
+        <li><a href="#s5">push 전 3단계 — fetch · pull · push</a></li>
+        <li><a href="#s6">브랜치로 작업하고 PR로 합치기</a></li>
+        <li><a href="#s7">인증 에러(403) 해결 — 키체인</a></li>
+        <li><a href="#s8">Git 명령어 모음 (치트시트)</a></li>
+        <li><a href="#s9">브랜치 관리 전략 — Git Flow</a></li>
+        <li><a href="#appendix">부록 — 출처 · 더 보기</a></li>
+      </ol>
+    </nav>
+
+    <main>
+
+      <!-- 한눈 요약 -->
+      <div class="note" style="margin-top:32px">
+        <div class="t">한 줄 요약</div>
+        <p>로컬에서 <code class="inline">git add</code> → <code class="inline">git commit</code>으로 변경을 쌓고,
+           <code class="inline">git push</code>로 GitHub에 올립니다. 이때 입력하는 비밀번호는 <strong>GitHub 로그인 암호가 아니라
+           토큰(PAT)</strong>입니다 — 2021년 8월부터 암호 인증이 폐지되었기 때문입니다.
+           협업 시에는 push 전에 반드시 <strong>fetch → pull</strong>로 원격과 동기화하세요.</p>
+      </div>
+
+      <!-- ───────────── 0 ───────────── -->
+      <section id="s0">
+        <h2 class="sec"><span class="n">00</span>버전관리와 GitHub<span class="lvl">개념</span></h2>
+        <p><strong>버전관리 시스템(VCS, Version Control System)</strong>은 파일의 변경 이력을 보관·저장하는 시스템입니다.
+           흔히 <em>버전 관리</em> 또는 <em>형상 관리</em>라고 부릅니다.</p>
+        <p>과거에는 CVS·SVN처럼 <strong>중앙 서버</strong>에 변경 기록을 두고 네트워크로 내려받는 방식이 일반적이었으나,
+           저장소가 커질수록 느려지고 네트워크 단절에 취약했습니다. 이를 보완하기 위해 각자의 로컬에 저장소 전체를 복제하는
+           <strong>분산형 버전관리(DVCS, Distributed VCS)</strong>가 도입되었고, 그 대표가 바로
+           <a class="link" href="https://github.com">Git / GitHub</a>입니다.</p>
+        <p>GitHub은 로컬 복제 기반으로 가볍고 빠르며, 대형 오픈소스 프로젝트와 스타 개발자들이 모이면서 사실상 표준이 되었습니다.
+           기본 사용은 무료이며, 기업용 솔루션·프로젝트 관리·AI 코드 보조(GitHub Copilot 등) 제품군도 함께 제공합니다.
+           <strong>2018년 Microsoft에 인수</strong>되어 운영 중입니다.</p>
+
+        <h3>GitHub을 다루는 방법</h3>
+        <table>
+          <thead><tr><th>방식</th><th>도구</th><th>특징</th></tr></thead>
+          <tbody>
+            <tr><td>UI 도구</td><td><a class="link" href="https://www.sourcetreeapp.com">Sourcetree</a>, <a class="link" href="https://desktop.github.com">GitHub Desktop</a></td><td>클릭 기반. 입문자가 흐름을 익히기 좋음 (둘 다 무료)</td></tr>
+            <tr><td>개발툴 내장</td><td>VS Code · JetBrains 등의 Git 플러그인</td><td>코딩하면서 커밋·푸시까지 한 화면에서</td></tr>
+            <tr><td>터미널(CLI)</td><td><code>git</code> 명령어</td><td>가장 정확하고 자동화에 유리. 본 문서의 기준</td></tr>
+          </tbody>
+        </table>
+        <p>문서는 <a class="link" href="https://www.markdownguide.org/cheat-sheet">Markdown</a> 문법으로 작성해 HTML로 표현합니다.
+           Git 명령어와 Markdown을 함께 익혀 두는 것을 추천합니다. 이 문서는 GitHub을 잘 모르는 사용자를 대상으로
+           사용 방법과 명령어를 이해하는 방향으로 설명합니다.</p>
+
+        <div class="note">
+          <div class="t">참고 링크</div>
+          <p>· GitHub — <a class="link" href="https://github.com">github.com</a><br>
+             · GitHub Docs (한국어) — <a class="link" href="https://docs.github.com/ko">docs.github.com/ko</a><br>
+             · GitHub Skills — <a class="link" href="https://skills.github.com">skills.github.com</a><br>
+             · Git SCM — <a class="link" href="https://git-scm.com">git-scm.com</a><br>
+             · Markdown Cheat Sheet — <a class="link" href="https://www.markdownguide.org/cheat-sheet">markdownguide.org/cheat-sheet</a></p>
+        </div>
+      </section>
+
+      <!-- ───────────── 1 ───────────── -->
+      <section id="s1">
+        <h2 class="sec"><span class="n">01</span>GitHub 가입 &amp; 첫 리포지토리<span class="lvl">실습</span></h2>
+        <p>GitHub 메인 화면에서 <strong>Sign up</strong> 버튼을 눌러 계정을 만들 수 있습니다. 상단 메뉴 <em>Product → Documentation</em>이나
+           <em>GitHub Skills</em>에서 공식 학습 자료도 볼 수 있습니다 — 영문 독해가 익숙하다면 공식 Doc·Skill 문서를 먼저 권합니다.</p>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/git.png" alt="GitHub 메인 화면의 Sign up 버튼" loading="lazy">
+          <figcaption>GitHub 메인 화면 — 우측 상단 Sign up으로 가입을 시작한다.</figcaption>
+        </figure>
+
+        <h3>1) 계정 만들기</h3>
+        <p>이메일로 로그인 계정을 만듭니다. 패스워드를 입력한 뒤 GitHub에서 사용할 <strong>유저명</strong>을 정합니다.</p>
+        <div class="note warn">
+          <div class="t">유저명은 URL 경로가 됩니다</div>
+          <p>유저명은 <code class="inline">github.com/&lt;유저명&gt;</code>처럼 주소 경로로 그대로 쓰이므로 신중하게 정하세요. 나중에 변경은 가능하지만 기존 링크가 깨질 수 있습니다.</p>
+        </div>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-3.png" alt="이메일 입력 가입 화면" loading="lazy">
+          <figcaption>이메일로 계정 생성 시작.</figcaption>
+        </figure>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/user_name.png" alt="유저명 입력 화면" loading="lazy">
+          <figcaption>유저명 등록 — URL 경로로 쓰이므로 신중하게.</figcaption>
+        </figure>
+        <p>업데이트 메일 수신 여부를 묻는 칸이 나옵니다(받으면 <code class="inline">y</code>, 아니면 <code class="inline">n</code>).
+           이어서 스팸 방지용 간단한 퍼즐을 풀고, 가입을 위한 활성화 코드 입력 단계로 넘어갑니다.</p>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/update.png" alt="업데이트 메일 수신 여부 입력" loading="lazy">
+          <figcaption>업데이트 메일 수신 여부 선택.</figcaption>
+        </figure>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/create_accunt.png" alt="스팸 방지 퍼즐 화면" loading="lazy">
+          <figcaption>스팸 방지 퍼즐 후 활성화 코드 입력 단계로.</figcaption>
+        </figure>
+        <p>가입이 정상 진행되면 이메일로 <strong>launch code(활성화 코드)</strong>가 전송됩니다. 이 코드를 화면에 입력하면 가입이 완료되고,
+           간단한 사용자 설문(사용 인원, 학생/교사 여부, 사용하려는 기능 등)이 이어집니다.</p>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-7.png" alt="활성화 코드 입력 화면" loading="lazy">
+          <figcaption>이메일로 받은 launch code 입력.</figcaption>
+        </figure>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-8.png" alt="사용자 설문 화면 1" loading="lazy">
+          <figcaption>사용 인원·성격 등 설문.</figcaption>
+        </figure>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-9.png" alt="사용자 설문 화면 2" loading="lazy">
+          <figcaption>사용하려는 기능 선택.</figcaption>
+        </figure>
+        <p>설문에 따라 추가 옵션이 나오는데, <strong>Continue for free</strong>를 선택하면 개인 대시보드로 이동합니다.</p>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-10.png" alt="Continue for free 선택 화면" loading="lazy">
+          <figcaption>Continue for free → 개인 대시보드 진입.</figcaption>
+        </figure>
+
+        <h3>2) 첫 리포지토리(저장소) 만들기</h3>
+        <p>처음에는 저장소(Repository)가 없으므로 빈 화면이 나옵니다. <strong>Create repository</strong>를 눌러 만들어 봅시다.</p>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-11.png" alt="저장소가 없는 초기 대시보드" loading="lazy">
+          <figcaption>최초에는 저장소가 없는 빈 대시보드.</figcaption>
+        </figure>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-12.png" alt="리포지토리 생성 폼" loading="lazy">
+          <figcaption>리포지토리명·설명 입력 → Public + Add a README file 선택 후 생성.</figcaption>
+        </figure>
+        <p>리포지토리명과 설명을 입력하고, <strong>Public</strong>(공개)과 <strong>Add a README file</strong> 정도만 선택해 생성하면 저장소가 만들어집니다.
+           👏 이제 GitHub에 첫 깃발을 꽂았습니다.</p>
+        <p>GitHub 주소는 <code class="inline">github.com/&lt;USER-ID&gt;/&lt;저장소명&gt;</code> 형식입니다.
+           예: <code class="inline">https://github.com/USER-ID/git-sample</code>.</p>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-13.png" alt="리포지토리 메인 화면과 README" loading="lazy">
+          <figcaption>저장소 메인 — 기본 버튼들과 README.md.</figcaption>
+        </figure>
+        <p><strong>Code</strong> 버튼을 누르면 클론에 쓰는 주소가 나옵니다. HTTPS, SSH(로컬에 public key 등록 필요), CLI 주소를 선택할 수 있고,
+           소스를 zip으로 내려받을 수도 있습니다.</p>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-14.png" alt="Code 버튼의 클론 주소 옵션" loading="lazy">
+          <figcaption>Code 버튼 — HTTPS / SSH / CLI 주소와 zip 다운로드.</figcaption>
+        </figure>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-14-1.png" alt="README 편집 펜 아이콘" loading="lazy">
+          <figcaption>README 우측 펜 아이콘으로 바로 편집 → Commit changes로 저장.</figcaption>
+        </figure>
+        <p>README의 펜 아이콘을 눌러 Markdown으로 내용을 적고, <strong>Commit changes</strong>에 무엇을 바꿨는지 기록한 뒤 커밋하면
+           변경이 화면과 파일 리스트에 반영됩니다. 기본적인 첫 스텝은 여기까지입니다.</p>
+      </section>
+
+      <!-- ───────────── 2 ───────────── -->
+      <section id="s2">
+        <h2 class="sec"><span class="n">02</span>내 PC에 Git 설치하기 (macOS)<span class="lvl">실습</span></h2>
+        <p>윈도우는 <a class="link" href="https://git-scm.com/download/win">git-scm.com/download/win</a>에서 인스톨러를 받아 설치하면 끝입니다.
+           맥은 최초 실행 시 몇 가지 사전 작업이 필요합니다.</p>
+
+        <h3>1) Git 설치 여부 확인 &amp; Xcode Command Line Tools</h3>
+        <pre><code>git --version</code></pre>
+        <p>버전이 출력되면 설치된 것이고, 아니면 추가 설치가 필요합니다. 맥에서는 보통 저장소를 <code class="inline">clone</code>해서 작업하는데,
+           Git이 없으면 clone 시 <strong>Xcode Command Line Tools</strong> 설치 안내가 뜹니다.</p>
+        <pre><code>git clone https://github.com/&lt;user-name&gt;/git-sample.git</code></pre>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-16.png" alt="clone 실행 시 Xcode CLT 설치 안내" loading="lazy">
+          <figcaption>최초 clone 시 개발자 도구가 없으면 설치 안내가 나온다.</figcaption>
+        </figure>
+        <pre><code><span class="c">xcode-select: note: no developer tools were found...
+requesting install. Choose an option in the dialog to download
+the command line developer tools.</span></code></pre>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-17.png" alt="Xcode Command Line Tools 설치 모달" loading="lazy">
+          <figcaption>설치 모달에서 Command Line Tools를 먼저 설치한다.</figcaption>
+        </figure>
+
+        <h3>2) Homebrew 설치하기</h3>
+        <p><a class="link" href="https://brew.sh">brew.sh</a>의 공식 명령을 터미널에 붙여넣습니다.</p>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-18.png" alt="brew.sh 설치 명령" loading="lazy">
+          <figcaption>brew.sh에서 Install Homebrew 명령을 복사.</figcaption>
+        </figure>
+        <pre><code>/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"</code></pre>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-19.png" alt="Homebrew 설치 진행 화면" loading="lazy">
+          <figcaption>설치 진행.</figcaption>
+        </figure>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-20.png" alt="Homebrew 설치 성공 메시지" loading="lazy">
+          <figcaption><code>Installation successful!</code> 메시지가 뜨면 성공.</figcaption>
+        </figure>
+
+        <h4>Apple Silicon(M1·M2·M3 등)에서 <code class="inline">brew: command not found</code>가 날 때</h4>
+        <p>Apple Silicon 맥은 Homebrew가 <code class="inline">/opt/homebrew</code>에 설치됩니다(Intel은 <code class="inline">/usr/local</code>).
+           설치 직후 셸이 brew 경로를 모르면 <code class="inline">zsh: command not found: brew</code>가 납니다.
+           아래처럼 <code class="inline">~/.zprofile</code>에 환경 설정을 추가하면 됩니다.</p>
+        <pre><code><span class="c"># &lt;MAC_USER_ID&gt;는 본인 맥 계정명. 모르면 터미널에 pwd 입력해 확인</span>
+echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' &gt;&gt; /Users/&lt;MAC_USER_ID&gt;/.zprofile
+eval "$(/opt/homebrew/bin/brew shellenv)"   <span class="c"># 현재 셸에 즉시 적용</span>
+
+brew help   <span class="c"># 도움말이 출력되면 정상 설치</span></code></pre>
+        <div class="note">
+          <div class="t">참고</div>
+          <p>최신 Homebrew 설치 스크립트는 설치가 끝나면 위 <code class="inline">~/.zprofile</code> 추가 명령을
+             <strong>"Next steps"로 직접 출력</strong>해 줍니다. 출력된 두 줄을 그대로 복사·실행하면 됩니다.
+             <code class="inline">.zprofile</code>이 이미 있으면 <code class="inline">eval "$(/opt/homebrew/bin/brew shellenv)"</code> 한 줄만 추가하세요.</p>
+        </div>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-21.png" alt="brew help 출력" loading="lazy">
+          <figcaption><code>brew help</code>가 출력되면 brew가 정상 동작.</figcaption>
+        </figure>
+
+        <h3>3) Git 설치</h3>
+        <pre><code>brew install git</code></pre>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-22.png" alt="brew install git 실행" loading="lazy">
+          <figcaption>Homebrew로 Git 설치.</figcaption>
+        </figure>
+        <p>설치가 끝났다면 작업용 디렉터리를 만들고 그 안에서 저장소를 클론해 봅시다.</p>
+        <pre><code>mkdir git-workspace
+cd git-workspace
+git clone https://github.com/&lt;user_name&gt;/git-sample.git</code></pre>
+      </section>
+
+      <!-- ───────────── 3 ───────────── -->
+      <section id="s3">
+        <h2 class="sec"><span class="n">03</span>첫 커밋과 푸시 — 인증의 변화<span class="lvl">실습</span></h2>
+        <p>클론한 <code class="inline">git-sample</code> 디렉터리로 이동해 상태를 확인합니다.</p>
+        <pre><code>cd git-sample
+git status   <span class="c"># 변경사항이 없으면 "nothing to commit" 출력</span></code></pre>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-23.png" alt="git status 출력" loading="lazy">
+          <figcaption>워크트리 변경사항이 없는 상태.</figcaption>
+        </figure>
+        <p>파일을 만들거나 수정한 뒤 커밋해 봅시다. README가 없다면 새로 만들고, 이미 있다면 <code class="inline">README-TEST.md</code> 같은 별도 파일로 테스트해도 됩니다.</p>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-24.png" alt="VS Code로 파일 편집" loading="lazy">
+          <figcaption>여기서는 <a class="link" href="https://code.visualstudio.com">VS Code</a>로 파일을 수정.</figcaption>
+        </figure>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-25.png" alt="편집한 파일 저장" loading="lazy">
+          <figcaption>내용을 입력하고 저장.</figcaption>
+        </figure>
+        <pre><code>touch README.md       <span class="c"># 파일이 없을 때 새로 생성</span>
+<span class="c"># 내용을 아무거나 입력해 저장한 뒤</span>
+git add README.md     <span class="c"># Git이 추적(tracking)하도록 추가</span>
+git commit -m "첫 번째 커밋입니다."</code></pre>
+
+        <h3>최초 사용자 정보 설정</h3>
+        <p>이름·이메일을 한 번도 설정하지 않았다면 커밋 시 다음과 같은 안내가 나옵니다. 자동 추정값 대신 본인 정보를 명시적으로 설정해 둡시다.</p>
+        <pre><code>git config --global --edit   <span class="c"># 글로벌 설정 파일을 vi로 연다</span></code></pre>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-26.png" alt="git config 글로벌 편집 화면" loading="lazy">
+          <figcaption><code>[user]</code>의 name·email 주석을 풀고 본인 계정으로 수정.</figcaption>
+        </figure>
+        <div class="note">
+          <div class="t">vi가 익숙하지 않다면</div>
+          <p>수정 후 <code class="inline">ESC</code> → <code class="inline">:wq!</code> → <code class="inline">Enter</code>로 저장·종료합니다.
+             vi가 부담스럽다면 기본 편집기를 바꿀 수 있습니다 —
+             예: <code class="inline">git config --global core.editor "code --wait"</code> (VS Code).
+             또는 편집 없이 한 줄로:
+             <code class="inline">git config --global user.name "이름"</code>,
+             <code class="inline">git config --global user.email "you@example.com"</code>.</p>
+        </div>
+
+        <h3>push — 그리고 "비밀번호"의 진실</h3>
+        <pre><code>git push origin main   <span class="c"># 원격 main 브랜치에 변경 반영</span></code></pre>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-27.png" alt="push 시 Username/Password 입력" loading="lazy">
+          <figcaption>push 시 Username·Password를 묻는다 — 그러나 로그인 암호로는 실패한다.</figcaption>
+        </figure>
+        <p>여기서 GitHub 로그인 암호를 넣으면 실패합니다. <strong>보안 정책이 바뀌어 암호 인증이 폐지</strong>되었기 때문입니다.</p>
+        <pre><code><span class="c">remote: Support for password authentication was removed on August 13, 2021.
+remote: Please see https://docs.github.com/get-started/getting-started-with-git/
+        about-remote-repositories for currently recommended modes of authentication.
+fatal: Authentication failed for 'https://github.com/&lt;user_name&gt;/git-sample.git/'</span></code></pre>
+        <div class="note warn">
+          <div class="t">암호 인증은 2021년 8월 13일에 폐지되었습니다</div>
+          <p>HTTPS 방식 Git 작업에서는 비밀번호 대신 <strong>Personal Access Token(PAT)</strong>을 사용해야 합니다.
+             (또는 처음 push할 때 자동으로 뜨는 <strong>브라우저 OAuth 로그인</strong>을 따라가도 됩니다.)
+             PAT는 HTTPS URL 작업에만 쓰입니다.</p>
+        </div>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-28.png" alt="Code 메뉴의 HTTPS / SSH 선택" loading="lazy">
+          <figcaption>Code 메뉴에서 HTTPS / SSH 접근을 선택. 여기서는 가장 많이 쓰는 HTTPS 기준.</figcaption>
+        </figure>
+        <table>
+          <thead><tr><th>인증 방식</th><th>주소 형태</th><th>준비물</th></tr></thead>
+          <tbody>
+            <tr><td><strong>HTTPS + 토큰</strong></td><td><code>https://github.com/&lt;id&gt;/&lt;repo&gt;.git</code></td><td>Personal Access Token 발급 (다음 절)</td></tr>
+            <tr><td><strong>SSH 키</strong></td><td><code>git@github.com:&lt;id&gt;/&lt;repo&gt;.git</code></td><td>로컬에 SSH 키 생성 후 Settings에 public key 등록</td></tr>
+          </tbody>
+        </table>
+        <p>토큰이든 SSH 키든 편한 방식을 고르면 됩니다. 이 문서는 HTTPS + 토큰을 기준으로 진행합니다.</p>
+      </section>
+
+      <!-- ───────────── 4 ───────────── -->
+      <section id="s4">
+        <h2 class="sec"><span class="n">04</span>Personal Access Token 발급<span class="lvl">실습</span></h2>
+        <p>로그인 후 우측 상단 계정 아이콘 → <strong>Settings</strong>로 들어갑니다. 좌측 메뉴 맨 아래
+           <strong>Developer settings → Personal access tokens</strong>에서 토큰을 발급합니다.</p>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-29.png" alt="계정 메뉴의 Settings" loading="lazy">
+          <figcaption>계정 아이콘 → Settings.</figcaption>
+        </figure>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-30.png" alt="Developer settings 메뉴" loading="lazy">
+          <figcaption>좌측 맨 아래 Developer settings → Personal access tokens.</figcaption>
+        </figure>
+
+        <h3>두 가지 토큰 — Fine-grained vs Classic</h3>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-31.png" alt="Fine-grained와 classic 토큰 선택" loading="lazy">
+          <figcaption>Fine-grained tokens / Tokens (classic) 두 종류.</figcaption>
+        </figure>
+        <table>
+          <thead><tr><th>종류</th><th>특징</th><th>권장 상황</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Fine-grained</strong><br>(권장)</td>
+              <td>특정 저장소·특정 권한(Contents, Pull requests 등)만 콕 집어 부여. 필수 만료일.</td>
+              <td>대부분의 경우 — GitHub 공식 권장</td>
+            </tr>
+            <tr>
+              <td><strong>Classic</strong></td>
+              <td><code>repo</code> 같은 넓은 스코프 단위. 발급이 단순하지만 권한이 광범위.</td>
+              <td>fine-grained가 아직 지원하지 않는 일부 기능이 필요할 때</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="note">
+          <div class="t">최신 변경 — Fine-grained 토큰이 정식(GA)이 되었습니다</div>
+          <p>Fine-grained PAT는 오랫동안 베타였으나 <strong>2025년 3월 18일 정식 출시(GA)</strong>되었고,
+             GitHub은 이제 <strong>가능하면 fine-grained 토큰 사용을 공식 권장</strong>합니다.
+             따라서 새로 발급한다면 fine-grained를 기본으로 두고, 저장소 하나에 <strong>Contents: Read and write</strong> 권한만 부여하면 충분합니다.
+             (Classic 토큰도 여전히 동작하며, 폐지되지는 않았습니다.)</p>
+        </div>
+
+        <h4>Classic 토큰으로 빠르게 발급하기</h4>
+        <p>개인 저장소 하나만 다룬다면 classic도 간단합니다. <strong>Generate new token</strong>을 누르고,</p>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-32.png" alt="Generate new token 버튼" loading="lazy">
+          <figcaption>Generate new token.</figcaption>
+        </figure>
+        <ul>
+          <li><strong>Note</strong> — 토큰 용도를 적어 둡니다(터미널용/개발툴용 등 헷갈리지 않게).</li>
+          <li><strong>Expiration</strong> — 만료일을 설정합니다(보안상 무기한은 비권장).</li>
+          <li><strong>Scope</strong> — <code class="inline">repo</code>를 선택(필요 시 추가).</li>
+        </ul>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-33.png" alt="토큰 Note와 만료일, 스코프 설정" loading="lazy">
+          <figcaption>Note·만료일·스코프 설정.</figcaption>
+        </figure>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-34.png" alt="repo 스코프 선택 후 토큰 생성" loading="lazy">
+          <figcaption><code>repo</code> 스코프 선택 후 Generate token.</figcaption>
+        </figure>
+        <div class="note warn">
+          <div class="t">토큰은 생성 직후 한 번만 보입니다</div>
+          <p>화면을 벗어나면 다시 볼 수 없습니다. 잊으면 재발급해야 하니, <strong>안전한 곳(비밀번호 관리자 등)에 즉시 복사·보관</strong>하세요.
+             평문으로 리포지토리나 dotfiles에 올리지 마세요.</p>
+        </div>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-35.png" alt="생성된 토큰 복사" loading="lazy">
+          <figcaption>생성된 토큰을 복사해 안전하게 보관.</figcaption>
+        </figure>
+        <p>이제 다시 push하면 <strong>Username</strong>에는 GitHub 아이디, <strong>Password</strong>에는 방금 복사한 <em>토큰</em>을 넣습니다.</p>
+      </section>
+
+      <!-- ───────────── 5 ───────────── -->
+      <section id="s5">
+        <h2 class="sec"><span class="n">05</span>push 전 3단계 — fetch · pull · push<span class="lvl">개념</span></h2>
+        <p>초심자가 가장 많이 겪는 오류가 동기화 누락입니다. 둘 이상이 작업하면 원격 저장소가 내 커밋보다 앞서 있을 수 있습니다.
+           push 전 아래 순서를 기억하세요.</p>
+
+        <h3>① 원격 정보 가져오기 — fetch</h3>
+        <pre><code>git fetch origin   <span class="c"># 원격 변경 "정보"만 가져온다 (아직 병합 안 함)</span></code></pre>
+
+        <h3>② 로컬과 병합하기 — pull</h3>
+        <pre><code>git pull origin main   <span class="c"># 가져온 변경을 내 로컬 브랜치에 병합</span></code></pre>
+
+        <h3>③ 병합본을 커밋하고 올리기 — push</h3>
+        <pre><code>git add README-TEST.md
+git commit -m "커밋 메시지"
+git push origin main</code></pre>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-36.png" alt="파일 생성부터 커밋·푸시까지의 터미널 캡처" loading="lazy">
+          <figcaption>파일 생성 → add → commit → push 순서. (여러 계정 병행 시 root에서 사용자 설정을 따로 줬다.)</figcaption>
+        </figure>
+        <div class="note">
+          <div class="t">언제 fetch·pull을 생략해도 되나</div>
+          <p>방금 clone한 직후처럼 원격에 변경이 없을 때는 바로 push해도 됩니다. 그러나 협업 중이거나 작업에 시간이 걸렸다면
+             <strong>push 전 반드시 fetch → pull</strong>로 동기화하세요.</p>
+        </div>
+        <p>토큰을 잘못 넣었거나 권한이 부족하면 <code class="inline">403</code> 에러가 납니다.</p>
+        <pre><code><span class="c">remote: Permission to &lt;id&gt;/git-sample.git denied to &lt;id&gt;.
+fatal: unable to access '...git-sample.git/': The requested URL returned error: 403</span></code></pre>
+        <p>정상적으로 push되면 다음과 같이 출력됩니다.</p>
+        <pre><code>$ git push origin main
+...
+To https://github.com/&lt;user_name&gt;/git-sample.git
+   9c7783c..cfb96d3  main -&gt; main</code></pre>
+      </section>
+
+      <!-- ───────────── 6 ───────────── -->
+      <section id="s6">
+        <h2 class="sec"><span class="n">06</span>브랜치로 작업하고 PR로 합치기<span class="lvl">실습</span></h2>
+        <p>여러 작업자가 같은 저장소에 서로 다른 기능을 반영하면 충돌(conflict)이 잦아집니다.
+           <strong>브랜치</strong>는 원본과 동일한 버전에서 분기한 독립 저장소로, 각자 따로 작업한 뒤 합치면 충돌을 크게 줄일 수 있습니다.
+           Git은 브랜치 생성·이동·병합이 가볍고 빠른 것이 강점입니다.</p>
+
+        <h3>브랜치 만들고 이동하기</h3>
+        <pre><code>git branch develop        <span class="c"># develop 브랜치 생성</span>
+git switch develop        <span class="c"># 해당 브랜치로 이동 (구: git checkout develop)</span>
+
+git switch -c develop     <span class="c"># 생성 + 이동을 한 번에 (구: git checkout -b develop)</span></code></pre>
+        <div class="note">
+          <div class="t"><code class="inline">checkout</code>이 <code class="inline">switch</code> · <code class="inline">restore</code>로 나뉘었습니다</div>
+          <p>Git 2.23(2019)부터 역할이 과하게 많던 <code class="inline">git checkout</code>이
+             <strong>브랜치 전환용 <code class="inline">git switch</code></strong>와
+             <strong>파일 복원용 <code class="inline">git restore</code></strong>로 분리되었습니다.
+             <code class="inline">checkout</code>도 여전히 동작하지만, 새로 배운다면 의미가 명확한 <code class="inline">switch</code>/<code class="inline">restore</code>를 권장합니다.</p>
+        </div>
+
+        <h3>브랜치에서 작업 → 원격에 push</h3>
+        <p>브랜치로 이동해 파일을 추가합니다(여기서는 <code class="inline">index.html</code>).</p>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-37.png" alt="develop 브랜치에서 index.html 생성" loading="lazy">
+          <figcaption>develop 브랜치에서 index.html 작성.</figcaption>
+        </figure>
+        <pre><code>git add index.html
+git commit -m "develop 브랜치에 html 파일을 추가"
+git push -u origin develop   <span class="c"># -u: 원격 develop과 추적 연결까지 설정</span></code></pre>
+        <p>push 결과에 PR 생성 안내 URL이 함께 출력되고, GitHub 메인 화면의 브랜치 목록에 <code class="inline">develop</code>이 보입니다.</p>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-38.png" alt="브랜치 목록에 develop 추가" loading="lazy">
+          <figcaption>브랜치 목록에 develop 등장.</figcaption>
+        </figure>
+
+        <h3>Pull Request(PR)로 병합 요청</h3>
+        <p>새 브랜치를 push하면 <strong>Compare &amp; pull request</strong> 버튼이 생깁니다. 이를 통해 메인 브랜치와 변경 내용을 비교·논의·리뷰하고 병합합니다.</p>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-39.png" alt="Compare and pull request 버튼" loading="lazy">
+          <figcaption>Compare &amp; pull request 버튼.</figcaption>
+        </figure>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-40.png" alt="PR 작성 화면" loading="lazy">
+          <figcaption><code>main ← develop</code> 변경에 대한 반영 요청(PR) 작성.</figcaption>
+        </figure>
+        <div class="note">
+          <div class="t">main 브랜치는 항상 완성본으로</div>
+          <p>실무에서는 동료 리뷰를 거쳐 PR을 Merge합니다. main 브랜치 소스는 불완전한 상태로 두지 않는 편이 좋습니다.
+             (예제는 혼자 작업이므로 Self PR → Self Merge로 진행합니다.)</p>
+        </div>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-41.png" alt="Self PR 생성" loading="lazy">
+          <figcaption>첫 PR 생성.</figcaption>
+        </figure>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-42.png" alt="Merge pull request 확인" loading="lazy">
+          <figcaption>Merge pull request → Confirm으로 main에 병합.</figcaption>
+        </figure>
+        <p>Confirm 후에도 커밋을 되돌릴(Revert) 수 있고, 병합에 쓴 브랜치를 삭제할 수도 있습니다(보통 히스토리 파악을 위해 일정 기간 보관).</p>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-43.png" alt="병합 성공 메시지" loading="lazy">
+          <figcaption>병합 성공 — Revert 또는 브랜치 삭제 선택 가능.</figcaption>
+        </figure>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-43-1.png" alt="Revert 가능 화면" loading="lazy">
+          <figcaption>Confirm 이후에도 커밋 Revert가 가능.</figcaption>
+        </figure>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-45.png" alt="병합 완료된 메인 저장소" loading="lazy">
+          <figcaption>메인 저장소에 PR 병합 커밋이 반영된 최종 상태.</figcaption>
+        </figure>
+      </section>
+
+      <!-- ───────────── 7 ───────────── -->
+      <section id="s7">
+        <h2 class="sec"><span class="n">07</span>인증 에러(403) 해결 — 키체인<span class="lvl">트러블슈팅</span></h2>
+        <p>이미 Git이 설치된 상태에서 계정을 추가·변경하면, <strong>예전에 저장된 자격증명</strong> 때문에 토큰이 인식되지 않아 403이 날 수 있습니다.
+           macOS는 자격증명을 <strong>키체인(Keychain)</strong>에 보관하므로, 여기서 값을 갱신하거나 삭제하면 됩니다.</p>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-46.png" alt="키체인 접근" loading="lazy">
+          <figcaption>런치패드 → 기타 → 키체인 접근(또는 Spotlight 검색).</figcaption>
+        </figure>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-47.png" alt="github.com 계정 항목" loading="lazy">
+          <figcaption><code>github.com</code> 항목에서 해당 계정 선택.</figcaption>
+        </figure>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-48.png" alt="암호 보기 후 토큰 갱신" loading="lazy">
+          <figcaption>"암호 보기" 체크 후 새 토큰으로 업데이트.</figcaption>
+        </figure>
+        <div class="note">
+          <div class="t">터미널에서 한 번에 지우기</div>
+          <p>키체인 GUI 대신 다음 명령으로 저장된 GitHub 자격증명을 비울 수도 있습니다.</p>
+          <pre style="margin-top:8px"><code>git credential-osxkeychain erase
+host=github.com
+protocol=https
+<span class="c">(빈 줄에서 Enter 두 번)</span></code></pre>
+          <p>이후 다시 push하면 Username·토큰을 새로 묻습니다.</p>
+        </div>
+      </section>
+
+      <!-- ───────────── 8 ───────────── -->
+      <section id="s8">
+        <h2 class="sec"><span class="n">08</span>Git 명령어 모음 (치트시트)<span class="lvl">레퍼런스</span></h2>
+
+        <h3>1) 사용자 글로벌 세팅</h3>
+        <pre><code>git config --global user.name "UserName"          <span class="c"># 유저명</span>
+git config --global user.email you@example.com    <span class="c"># 유저 이메일</span></code></pre>
+        <p>설정 후 clone·pull 시 Username·Password를 물으면, 패스워드 자리에 <strong>토큰</strong>을 넣습니다.</p>
+
+        <h4>(1) 자격증명 캐싱</h4>
+        <pre><code>git config --global credential.helper cache       <span class="c"># 토큰을 일정 시간 캐싱</span>
+git config --global --unset credential.helper     <span class="c"># 캐싱 해제</span>
+<span class="c"># macOS는 osxkeychain, Windows는 manager가 기본 helper로 더 편리</span></code></pre>
+
+        <h4>(2) 로컬 저장소 <code class="inline">.git/config</code> 직접 수정</h4>
+        <pre><code>[remote "origin"]
+    url = https://&lt;user-id&gt;:&lt;token&gt;@github.com/&lt;계정명&gt;/&lt;저장소명&gt;.git
+    fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "main"]
+    remote = origin
+    merge = refs/heads/main</code></pre>
+        <div class="note warn">
+          <div class="t">URL에 토큰을 박는 방식은 주의</div>
+          <p>위처럼 URL에 토큰을 넣으면 매번 입력은 줄지만, <strong>토큰이 평문으로 파일에 남습니다.</strong>
+             가능하면 credential helper(키체인/manager)에 맡기는 편이 안전합니다.</p>
+        </div>
+
+        <h3>2) 최초 설정을 위한 기본 명령</h3>
+        <pre><code>mkdir project        <span class="c"># 로컬 프로젝트 폴더 만들기</span>
+cd project
+git init             <span class="c"># 이 폴더를 저장소로 초기화</span>
+git add README.md    <span class="c"># 파일 추가(스테이징)</span>
+git status           <span class="c"># 상태 확인</span>
+git commit -m "첫 번째 커밋"</code></pre>
+
+        <h3>3) 브랜치</h3>
+        <pre><code>git branch newBranch        <span class="c"># 브랜치 생성</span>
+git branch                  <span class="c"># 로컬 브랜치 목록</span>
+git branch -a               <span class="c"># 로컬+리모트 전체 (-r 리모트, -l 로컬)</span>
+git branch -M newName       <span class="c"># 브랜치명 변경 (master → main 컨벤션 변경)</span>
+git branch -D localBranch   <span class="c"># 로컬 브랜치 강제 삭제</span>
+
+git switch newBranch        <span class="c"># 브랜치 이동 (구: git checkout)</span>
+git switch -c newBranch     <span class="c"># 생성 + 이동 (구: git checkout -b)</span></code></pre>
+        <div class="note">
+          <div class="t">기본 브랜치 이름: master → main</div>
+          <p>GitHub은 <strong>2020년 10월부터 새 저장소의 기본 브랜치를 <code class="inline">main</code></strong>으로 변경했습니다.
+             (Git 코어 자체는 아직 기본값이 <code class="inline">master</code>지만, 차기 메이저에서 <code class="inline">main</code>으로 전환될 예정입니다.)
+             아래 명령어 예시의 <code class="inline">master</code>는 환경에 따라 <code class="inline">main</code>으로 읽으세요.</p>
+        </div>
+
+        <h3>4) 원격 저장소</h3>
+        <pre><code>git remote add origin https://github.com/&lt;user&gt;/&lt;repo&gt;.git   <span class="c"># origin 별칭으로 원격 추가</span>
+git remote -v                                <span class="c"># 등록된 원격 확인</span>
+git remote remove origin                     <span class="c"># 원격 삭제</span>
+git remote set-url origin https://.../&lt;repo&gt;.git   <span class="c"># 원격 URL 변경</span>
+
+git fetch --all                              <span class="c"># 모든 원격 정보 가져오기</span>
+git pull --all                               <span class="c"># 모든 브랜치 병합</span></code></pre>
+
+        <h3>5) 병합 — merge · rebase</h3>
+        <pre><code>git switch main
+git merge newBranch          <span class="c"># newBranch를 main에 병합 (fast-forward 가능)</span>
+
+<span class="c"># rebase: newBranch를 main 위로 재배치</span>
+git switch newBranch
+git rebase main
+<span class="c"># 충돌 시: 파일 수정 → git add → 아래로 계속</span>
+git add file.txt
+git rebase --continue
+git rebase --abort           <span class="c"># rebase 취소</span>
+
+git merge --squash newBranch <span class="c"># 여러 커밋을 하나로 묶어 병합</span></code></pre>
+
+        <h3>6) 되돌리기 — reset · revert</h3>
+        <table>
+          <thead><tr><th>명령</th><th>효과</th><th>언제</th></tr></thead>
+          <tbody>
+            <tr><td><code>git reset HEAD^</code></td><td>최종 커밋 취소, 워킹트리 보존</td><td>커밋했지만 push 전</td></tr>
+            <tr><td><code>git reset HEAD~2</code></td><td>마지막 2개 커밋 취소, 워킹트리 보존</td><td>여러 커밋 되돌릴 때</td></tr>
+            <tr><td><code>git reset --hard HEAD~2</code></td><td>마지막 2개 커밋 + 변경까지 완전 폐기</td><td>변경 자체를 버릴 때 (주의)</td></tr>
+            <tr><td><code>git reset --hard ORIG_HEAD</code></td><td>직전 reset/merge 이전 상태로 복구</td><td>실수로 reset/merge 했을 때</td></tr>
+            <tr><td><code>git revert HEAD</code></td><td>변경을 취소하는 <em>새 커밋</em> 생성</td><td>이미 push한 커밋을 되돌릴 때</td></tr>
+          </tbody>
+        </table>
+
+        <h3>7) cherry-pick · 로그 · 커밋 수정</h3>
+        <pre><code>git log                      <span class="c"># 커밋 로그 확인</span>
+git switch main
+git cherry-pick 99daed2      <span class="c"># 특정 커밋만 골라 현재 브랜치로 복사</span>
+git commit --amend           <span class="c"># 직전 커밋 메시지/내용 수정</span></code></pre>
+
+        <h3>8) 자주 만나는 에러</h3>
+        <h4><code class="inline">refusing to merge unrelated histories</code></h4>
+        <p>두 브랜치의 커밋 이력이 서로 독립적으로 생성되어 연관이 없을 때 발생합니다. 명시적으로 허용 옵션을 줍니다.</p>
+        <pre><code>git pull origin main --allow-unrelated-histories
+<span class="c"># 또는</span>
+git merge --allow-unrelated-histories main</code></pre>
+        <h4><code class="inline">src refspec main does not match any</code></h4>
+        <p>push하려는 브랜치가 로컬/원격에 없을 때입니다. 브랜치 존재를 확인하고, 없으면 초기화부터 다시 진행합니다.</p>
+        <pre><code>git init
+git add README.md
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/&lt;USER-ID&gt;/&lt;repo&gt;.git
+git push -u origin main</code></pre>
+
+        <h3>9) 기존 로컬 소스를 새 원격에 연결할 때</h3>
+        <pre><code>git init
+git remote -v                       <span class="c"># 원격 확인</span>
+git remote remove origin            <span class="c"># 기존 원격 정리(있을 때)</span>
+git remote add origin https://github.com/&lt;MyAccount&gt;/&lt;repo&gt;.git
+git add .
+git commit -m "init"
+git pull origin main --rebase       <span class="c"># 로컬 변경을 원격 최신 위로 재배치</span>
+git push origin main</code></pre>
+      </section>
+
+      <!-- ───────────── 9 ───────────── -->
+      <section id="s9">
+        <h2 class="sec"><span class="n">09</span>브랜치 관리 전략 — Git Flow<span class="lvl">개념</span></h2>
+        <p>브랜치 운영 전략은 팀마다 다르지만, 가장 널리 알려진 것이 <strong>Git Flow</strong>(정식: <em>Git Flow branching model</em>)입니다.
+           로컬·개발·테스트·스테이징·운영 같은 <strong>Phase 단위</strong>로 머지 대상 브랜치를 두어 소스 흐름을 통제하는 것이 핵심입니다.</p>
+        <figure>
+          <img src="https://raw.githubusercontent.com/claude-code-expert/lecture/main/docs/images/github-guide/1-49.png" alt="Git Flow 브랜치 다이어그램" loading="lazy">
+          <figcaption>Git Flow의 5개 브랜치 흐름.</figcaption>
+        </figure>
+        <table>
+          <thead><tr><th>브랜치</th><th>역할</th></tr></thead>
+          <tbody>
+            <tr><td><strong>master / main</strong></td><td>Production에 배포되는 메인. 항상 최신 배포 상태 유지. (과거 master → 현재 main)</td></tr>
+            <tr><td><strong>develop</strong></td><td>개발 통합 브랜치. 각자의 feature를 모아 테스트 환경에 배포.</td></tr>
+            <tr><td><strong>feature</strong></td><td>기능 단위 브랜치. 완료되면 develop에 머지.</td></tr>
+            <tr><td><strong>release</strong></td><td>master에서 파생한 실배포본(QA·카나리 검수 대상).</td></tr>
+            <tr><td><strong>hotfix</strong></td><td>배포 후 긴급 버그 패치용. master에서 파생.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>feature 브랜치 작업 흐름</h3>
+        <p>보통 develop 기준으로 네이밍 룰을 적용해 브랜치를 만듭니다. Jira를 쓴다면 이슈 번호와 결합할 수 있습니다.</p>
+        <pre><code>git switch develop
+git pull
+git switch -c feature/ticket-&lt;번호&gt;-&lt;feature명&gt;
+<span class="c"># 작업 완료 → develop에서 fetch & pull 후 merge (daily merge) → push → PR(작업 → develop)</span></code></pre>
+        <p>develop에서 테스트 Phase 배포 후 검증 → master로 PR 병합 → Stage 서버 배포·검증 → 배포본 태그 생성.</p>
+        <pre><code>git switch master
+git tag release/REL-2025-06-01-1330       <span class="c"># prefix + 날짜·시간 태그</span>
+git push origin release/REL-2025-06-01-1330
+<span class="c"># hotfix: master에서 파생 → 작업 → PR(hotfix → master). 태그는 항상 master에서 생성</span></code></pre>
+        <div class="note">
+          <div class="t">실무 권장</div>
+          <p>develop과 feature의 버전 차가 벌어지면 병합이 고통스러워집니다. <strong>Daily merge</strong>로 꾸준히 동기화하세요.
+             또한 Git Flow는 공유 브랜치에서 이력을 헝클 수 있는 <strong>rebase를 권장하지 않습니다.</strong></p>
+        </div>
+        <div class="note warn">
+          <div class="t">2026년 시점의 균형 잡힌 시각 — Git Flow가 정답은 아닙니다</div>
+          <p>Git Flow를 고안한 <strong>Vincent Driessen은 2020년, 원문에 직접 주석을 달아</strong> "지속적으로 배포되는 웹 앱이라면
+             Git Flow보다 <strong>GitHub Flow</strong> 같은 단순한 모델을 권한다"고 밝혔습니다.
+             오늘날 CI/CD 환경의 사실상 표준은 <strong>트렁크 기반 개발(Trunk-Based Development)</strong>입니다.
+             <strong>릴리스 주기가 분명한 패키지·앱</strong>에는 Git Flow가 여전히 유효하지만, 빠른 배포가 핵심이라면
+             GitHub Flow나 트렁크 기반을 먼저 검토하세요. 전략은 팀의 배포 방식에 맞춰 고르는 것입니다.</p>
+        </div>
+      </section>
+
+      <!-- ───────────── 부록 ───────────── -->
+      <section id="appendix">
+        <h2 class="sec"><span class="n">10</span>부록 — 출처 · 더 보기<span class="lvl">레퍼런스</span></h2>
+        <table>
+          <thead><tr><th>주제</th><th>공식 출처</th></tr></thead>
+          <tbody>
+            <tr><td>HTTPS 암호 인증 폐지(2021-08-13)</td><td><a class="link" href="https://github.blog/changelog/2021-08-12-git-password-authentication-is-shutting-down/">github.blog changelog</a></td></tr>
+            <tr><td>Personal Access Token 관리</td><td><a class="link" href="https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens">docs.github.com</a></td></tr>
+            <tr><td>Fine-grained PAT 정식 출시(2025-03-18)</td><td><a class="link" href="https://github.blog/changelog/2025-03-18-fine-grained-pats-are-now-generally-available/">github.blog changelog</a></td></tr>
+            <tr><td>Homebrew 설치</td><td><a class="link" href="https://docs.brew.sh/Installation">docs.brew.sh/Installation</a></td></tr>
+            <tr><td>git switch / restore</td><td><a class="link" href="https://git-scm.com/docs/git-switch">git-scm.com/docs/git-switch</a></td></tr>
+            <tr><td>기본 브랜치 main 전환(2020-10)</td><td><a class="link" href="https://github.blog/changelog/2020-10-01-the-default-branch-for-newly-created-repositories-is-now-main/">github.blog changelog</a></td></tr>
+            <tr><td>Git Flow 원문 + 2020 주석</td><td><a class="link" href="https://nvie.com/posts/a-successful-git-branching-model/">nvie.com</a></td></tr>
+            <tr><td>GitHub Skills · Docs</td><td><a class="link" href="https://skills.github.com">skills.github.com</a> · <a class="link" href="https://docs.github.com/ko">docs.github.com/ko</a></td></tr>
+          </tbody>
+        </table>
+        <footer>
+          본 문서는 GitHub.com(HTTPS 방식)과 macOS 환경을 기준으로 작성되었습니다. UI 명칭·버전·정책은 시점에 따라 달라질 수 있으니,
+          인증·토큰 관련 세부는 위 공식 출처에서 최신 내용을 확인하세요. 내용 최신화 검증: 2026-06.
+        </footer>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<script>
+  // 코드 블록 복사 버튼 (기능적 동작만, 장식 애니메이션 없음)
+  document.querySelectorAll('pre').forEach(function (pre) {
+    var btn = document.createElement('button');
+    btn.className = 'copy';
+    btn.type = 'button';
+    btn.textContent = '복사';
+    btn.addEventListener('click', function () {
+      var codeEl = pre.querySelector('code');
+      var text = codeEl ? codeEl.innerText : pre.innerText;
+      navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = '복사됨';
+        setTimeout(function () { btn.textContent = '복사'; }, 1200);
+      }).catch(function () {
+        btn.textContent = '복사 실패';
+        setTimeout(function () { btn.textContent = '복사'; }, 1200);
+      });
+    });
+    pre.appendChild(btn);
+  });
+
+  // 목차 현재 위치 표시 (스크롤스파이)
+  var tocLinks = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  var linkMap = {};
+  tocLinks.forEach(function (a) { linkMap[a.getAttribute('href').slice(1)] = a; });
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) {
+        tocLinks.forEach(function (l) { l.classList.remove('active'); });
+        if (linkMap[e.target.id]) { linkMap[e.target.id].classList.add('active'); }
+      }
+    });
+  }, { rootMargin: '0px 0px -78% 0px' });
+  document.querySelectorAll('section[id]').forEach(function (s) { observer.observe(s); });
+</script>
+</body>
+</html>
