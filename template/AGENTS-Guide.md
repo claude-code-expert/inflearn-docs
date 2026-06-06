@@ -106,7 +106,6 @@ AI가 가장 잘 못하는 것은 **"무엇을 해야 하는지"** 와 **"무엇
 <!--
 ➕ 보강: 5개 섹션은 원본 그대로 유지하되, 예시를 markflow + Next.js 로 적용함. 각자의 프로젝트 상황에 맞도록 커스텀 필요
 근거:
-- 사용자 메모리: Tika/brewnet은 deprecated, markflow가 강의 캐논
 - markflow 스택: Next.js 16 · Drizzle · PostgreSQL 16 · pnpm · Biome · Vitest
 -->
 

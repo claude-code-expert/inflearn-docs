@@ -159,7 +159,7 @@ Here are some important rules for the interaction:
 
 ### 🔵 5. Examples — 예시 (few-shot)
 
-**개념.** 말로 설명하는 대신 *이상적 입출력*을 보여준다. 강의에서 **"지식 작업에서 가장 효과적인 단일 도구"**로 강조.
+**개념.** 말로 설명하는 대신 *이상적 입출력*을 보여준다.
 **무엇을 입력하나.** `<example>` 태그로 감싼 User→응답 쌍. 엣지 케이스 예시가 가장 가치 높다.
 
 ```text

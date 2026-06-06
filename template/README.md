@@ -871,8 +871,9 @@ claude "로그인 시 401 에러 수정. bcrypt 해싱 불일치가 원인. src/
 
 #### 관련 문서
 
-- `CLAUDE.md` — 기본 프로젝트 템플릿
-- `CLAUDE.local.md` — 개인 설정 템플릿
-- `CLAUDE-template(Root).md` — 모노레포 루트 템플릿
-- [Claude Code Hooks Guide](../guide/claude-code-hooks-guide.md) — 상세 Hook 설정 가이드
-- [CLI Alias & Settings](../tips/CLAUDE-CODE-CLI-ALIAS-SETTINGS.md) — 권한/설정 레퍼런스
+- [CLAUDE.md](./CLAUDE.md) — 기본 프로젝트 템플릿
+- [CLAUDE.local.md](./CLAUDE.local.md) — 개인 설정 템플릿
+- [CLAUDE-template(Root)](./CLAUDE-template%28Root%29.md) — 모노레포 루트 템플릿
+- [Claude Code Hooks Guide](./claude-code-hook-guide.md) — 상세 Hook 설정 가이드
+- [CLI Alias & Settings](./cli-alias-settings.md) — 권한/설정 레퍼런스
+- [Skills · Commands · Hooks Guide](../docs/guide/skills-commands-hooks-guide.md) — 필수 스킬·커맨드·훅 자동화 패키지
