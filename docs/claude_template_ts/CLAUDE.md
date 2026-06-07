@@ -144,4 +144,5 @@ Each project defines these in its own `.claude/rules/` and references them here:
 @.claude/rules/commands.md
 @.claude/rules/code-style.md
 @.claude/rules/safety.md
-@.claude/rules/gotchas.md
+@.claude/rules/gotchas.m
+@.claude/rules/anti-ai-slop.md
