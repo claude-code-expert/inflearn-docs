@@ -8,12 +8,36 @@
 
 ## [Unreleased]
 
+## [2026-06-12]
+
+### Changed
+- **문서 전수 감사 반영** — 스테일 모델 표기(Sonnet 4.5 → 4.6, Gemini 2.5 → 3.1 등)·Node LTS·훅 예제 환경변수(`$CLAUDE_TOOL_INPUT` → stdin+jq)·SessionEnd 훅 `source` → `reason`·럭키드로우 코드 주석의 명세 참조 번호 등 일괄 수정. README의 `docs/claude_template_ts` 표를 실제 `.claude/rules/`·`.claude/templates/` 구조로 갱신, `docs/guide/` 누락 가이드 2종 추가.
+- **GitHub 가이드 통합** — 레거시 `appendix-github-guide.html`(Notion 추출본)을 `github-guide-101.html`로 대체(README 목록 갱신)하고 `docs/html/_superseded/`로 이동.
+- **터미널 가이드 통합** — 사본 `terminal-guide-101.html`의 고유 내용(WSL2 설치 안내 등)을 `terminal-guide-for-beginners.html`에 병합 후 `docs/html/_superseded/`로 이동.
+
+
+## [2026-06-06]
+
+### Added
+- **Claude Code 훅 실무 가이드** (`template/claude-code-hook-guide.md`) — 개념 → 작동 구조 → 첫 훅 → 실무 레시피 마크다운 버전.
+- **CLI Alias·권한 설정 레퍼런스** (`template/cli-alias-settings.md`).
+- **Skills·Commands·Hooks 통합 가이드** (`docs/guide/skills-commands-hooks-guide.md`).
+
+### Changed
+- **템플릿 README 관련 문서 링크 정비** (`template/README.md`) — 새 훅 가이드·CLI 레퍼런스 연결.
+- **`.DS_Store`·`docs/html` git 추적 제외** (`.gitignore`) — 추적 중이던 `.DS_Store` 파일 제거.
+
+## [2026-06-02]
+
+### Changed
+- **가이드 문서를 run-ai 기준으로 이동·정리** — `docs/guide/github-guide-101.html`·`terminal-guide-101.html`을 git 추적에서 제거(run-ai로 이동).
+
 ## [2026-06-01]
 
 ### Added
 - **zsh 설치 & 설정 가이드** (`docs/html/zsh-guide.html`) — 원본 `zsh-guide.md`를 동일 룩앤필 HTML로 변환. PlantUML 설치 흐름도를 인라인 SVG로 재작성, `[스크린샷 영역]` 자리 표시 포함.
 - **10단계 프롬프트 구조 가이드** (`docs/html/prompt-structure-10-stacks.html`) — Anthropic "Prompting 101" 정리. 다이어그램 SVG를 HTML에 직접 인라인(외부 경로 의존 제거). "프롬프트 실전 예시" 섹션(제로샷·퓨샷·CoT·문제 분해·ReAct) 포함.
-- **Git · GitHub 활용 가이드** (`docs/guide/github-guide-101.html`).
+- **Git · GitHub 활용 가이드** (`docs/html/github-guide-101.html`).
 - **Claude Code 훅 실무 가이드** (`docs/html/claude-code-hook-guide.html`) — 개념 → 작동 구조 → 첫 훅 → 실무 레시피. "필수 훅 베이스라인"(민감 파일 보호·세션 컨텍스트 주입·Bash 감사 로그·완료 알림) 섹션 추가.
 - **비개발자 터미널 입문**: Apple 터미널 공식 단축키 표, "실전 예제 모음"(셸 설정 적용·파일 생성/권한(chmod)·복사/이동/삭제·폴더 열기) 추가.
 - **비개발자 GitHub 입문**: "실전 — 개발 시점 자주 쓰는 흐름"(clone→commit→push, fetch, 브랜치 생성·푸시, pull 후 merge, unrelated-histories 처리, `.gitignore` 추적 제외) 추가.

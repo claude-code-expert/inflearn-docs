@@ -16,8 +16,8 @@ def main() -> None:
         sys.exit(0)
 
     # Usually this hook is matcher-scoped to "clear", but keep a defensive check.
-    source = data.get("source", "")
-    if source and source != "clear":
+    reason = data.get("reason", "")
+    if reason and reason != "clear":
         sys.exit(0)
 
     session_id = data.get("session_id", "unknown")

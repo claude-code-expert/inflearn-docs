@@ -12,7 +12,7 @@ samples/handoff/
 ├── session-restore.sh           # SessionStart 시 직전 handoff 주입
 ├── claude-handoff-supervisor.py # /compact → /clear 자동 치환 supervisor (참조용)
 ├── settings.example.json        # 훅 등록 스니펫
-├── sample-transcript.jsonl      # 합성 transcript (user 4 turn + tool_use 2건)
+├── sample-transcript.jsonl      # 합성 transcript (user 5 turn + tool_use 2건)
 ├── run-test.sh                  # 격리 실행 러너 (HOME=./out/ 으로 분리)
 ├── expected-output.md           # 기대 결과 예시
 └── README.md

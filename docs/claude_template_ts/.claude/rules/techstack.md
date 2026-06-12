@@ -10,7 +10,7 @@
 
 ## Core
 - **Language**: TypeScript 5.x (`strict: true`)
-- **Runtime**: Node.js 20+ (LTS)
+- **Runtime**: Node.js 22+ (LTS)
 - **Package manager**: pnpm (lockfile committed)
 - **Module system**: ESM (`"type": "module"`)
 

@@ -8,13 +8,13 @@
 #
 # 환경변수:
 #   GEMINI_API_KEY        Google AI Studio 발급 키 (필수)
-#   GEMINI_MODEL          기본 gemini-2.5-pro
+#   GEMINI_MODEL          기본 gemini-3.1-pro-preview
 #   REVIEW_OUTPUT_DIR     기본 ./output
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MODEL="${GEMINI_MODEL:-gemini-2.5-pro}"
+MODEL="${GEMINI_MODEL:-gemini-3.1-pro-preview}"
 OUTPUT_DIR="${REVIEW_OUTPUT_DIR:-$SCRIPT_DIR/output}"
 PROMPTS_DIR="$SCRIPT_DIR/prompts"
 CONV_DIR="$SCRIPT_DIR/conventions"

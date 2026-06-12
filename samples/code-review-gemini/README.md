@@ -78,7 +78,7 @@ Score: 25/100
 ## 왜 Gemini 인가
 
 - **자기편향 제거**: 같은 모델이 작성+리뷰하면 자체 선호 패턴에 가산점을 주는 경향이 보고됨. 외부 모델은 다른 학습 분포 → 독립적 신호.
-- **2차 의견(second opinion)**: Anthropic 모델 한계가 노출되는 영역(특정 TS 패턴, React 18 동시성, 새 ECMAScript) 을 다른 관점에서 평가.
+- **2차 의견(second opinion)**: Anthropic 모델 한계가 노출되는 영역(특정 TS 패턴, React 19 신기능, 새 ECMAScript) 을 다른 관점에서 평가.
 - **재현성**: 동일 프롬프트/모델 버전 핀 → CI 에 통합 가능.
 
 ## 알려진 한계
@@ -86,6 +86,7 @@ Score: 25/100
 - `examples/*.tsx` 의 TypeScript 진단(`Cannot find module 'react'`)은 의도된 것. 샘플 폴더는 React 를 설치하지 않음 — review.sh 는 코드를 **텍스트로** Gemini 에 전달하므로 컴파일 컨텍스트 불필요.
 - Gemini 도 결국 LLM. false positive 가능 → `verdict` 만 보고 자동 머지 차단하지 말고 사람이 한 번 확인.
 - 큰 PR (수천 라인) 은 컨텍스트 한계에 걸릴 수 있음 — 파일 단위 분할 호출 권장.
+- lint 체인은 ESLint 8 + legacy config(`.eslintrc.json`, `--no-eslintrc`) 에 고정되어 있음. ESLint 8 은 2024년 10월 EOL — 실제 프로젝트에서는 ESLint 9 flat config(`eslint.config.js`) + typescript-eslint v8 로 마이그레이션 권장.
 
 ## 가이드
 

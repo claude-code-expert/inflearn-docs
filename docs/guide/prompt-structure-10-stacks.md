@@ -1,6 +1,6 @@
 # 10단계 프롬프트 구조 (Anthropic "Prompting 101")
 
-> 동봉 이미지(`prompt-structure-10-stacks.svg` / `.png`)와 색상이 1:1로 매칭됩니다.
+> 동봉 이미지(`prompt-structure-10-stacks.svg`)와 색상이 1:1로 매칭됩니다.
 > 각 스택은 **하나의 액센트 색**을 가지며, 좌측 라벨 ↔ 우측 예시 블록의 색이 같으면 같은 스택입니다.
 
 ---
@@ -213,7 +213,7 @@ How do you respond to the user's question?
 Think about your answer first before you respond.
 ```
 
-> ⚠️ **최신 보충(중요):** Opus 4.x / Sonnet 4.5 등 최신 모델에서는 수동 CoT보다 **extended thinking** 기능 사용이 공식 권장된다. 강의 슬라이드는 이 기능 보편화 이전 표준이므로, 강의 시 "최신 모델에선 extended thinking으로 대체"를 반드시 보충할 것.
+> ⚠️ **최신 보충(중요):** Fable 5 / Opus 4.8 / Sonnet 4.6 등 최신 모델에서는 수동 CoT보다 **extended thinking** 기능 사용이 공식 권장된다. 강의 슬라이드는 이 기능 보편화 이전 표준이므로, 강의 시 "최신 모델에선 extended thinking으로 대체"를 반드시 보충할 것.
 
 ---
 

@@ -1,6 +1,7 @@
 # Claude Code Expert — 강의 자료 모음
 
 > 📘 [github.com/claude-code-expert](https://github.com/claude-code-expert) — **클로드 코드 마스터** (한빛미디어) 공식 리포지토리
+
 > ☕ [https://github.com/claude-code-expert/carve-harness](https://github.com/claude-code-expert/carve-harness) — 하네스 구성 CLI 
 
 이 저장소는 Claude Code 강의를 통해 실무에 Claude Code를 적용하기 위한 **지침 파일 템플릿**, **실행 가능한 샘플(Hooks·Skill)**, **설계 문서 예제**, **개념 가이드**를 한곳에 모은 강의 자료다. 각 디렉토리는 독립적으로 사용할 수 있으며, 서로 `@` 참조와 워크플로로 연결된다.
@@ -11,6 +12,7 @@
 
 > 최근 업데이트 요약 — 한 줄씩만 기록합니다. 전체 내역은 [CHANGELOG.md](./CHANGELOG.md).
 
+- **2026-06-12** — 문서 전수 감사: 모델 표기·경로·명세 참조 현행화, 중복 가이드 통합, CHANGELOG 누락분(06-02·06-06) 보충
 - **2026-06-06** — 훅 실무 가이드(`template/claude-code-hook-guide.md`)·CLI Alias/권한 레퍼런스 추가, 템플릿 README 관련 문서 링크 정비
 - **2026-06-02** — 가이드 문서를 run-ai 기준으로 이동·정리
 - **2026-06-01** — 럭키드로우 단일 파일 앱 + 설계 문서(PRD·TRD·REQUIREMENTS·ANALYSIS) 추가·현행화
@@ -72,10 +74,11 @@ AI 코딩 에이전트(Claude Code, Cursor, Codex 등)에게 프로젝트 맥락
 | 파일 | 역할 |
 |------|------|
 | `CLAUDE.md` | 루트 지침 — 아래 규칙 파일들을 종합·참조 |
-| `Karpathy_Behavioral_CLAUDE.md` | 언어 무관 행동 원칙(가정 금지·단순성·외과적 수정·목표 주도) |
-| `Augmented_Coding_CLAUDE.md` | Kent Beck식 TDD·Tidy First 방법론 (Red→Green→Refactor) |
-| `code-style.md` / `commands.md` / `techstack.md` | 코드 스타일·pnpm 명령어·기본 스택 정의 |
-| `project-structure.md` / `safety.md` / `gotchas.md` | 디렉토리 맵·안전 가드레일·버그 패턴 로그 |
+| `.claude/templates/Karpathy_Behavioral_CLAUDE.md` | 언어 무관 행동 원칙(가정 금지·단순성·외과적 수정·목표 주도) |
+| `.claude/templates/Augmented_Coding_CLAUDE.md` | Kent Beck식 TDD·Tidy First 방법론 (Red→Green→Refactor) |
+| `.claude/rules/` — `code-style.md` / `commands.md` / `techstack.md` | 코드 스타일·pnpm 명령어·기본 스택 정의 |
+| `.claude/rules/` — `project-structure.md` / `safety.md` / `gotchas.md` | 디렉토리 맵·안전 가드레일·버그 패턴 로그 |
+| `.claude/rules/anti-ai-slop.md` | 이미지·HTML 생성 규칙 — 장식 금지, 정보 위계·여백·타이포로 품질 강제 |
 
 #### `docs/guide/` — 통합·워크플로 가이드 (한글)
 | 파일 | 다루는 내용 | 연결되는 샘플 |
@@ -84,9 +87,11 @@ AI 코딩 에이전트(Claude Code, Cursor, Codex 등)에게 프로젝트 맥락
 | `handoff-system-guide.md` | `/compact`·`/clear` 시 컨텍스트 보존·복원 | → `samples/handoff/` |
 | `slack-notification-hook-guide.md` | Stop 이벤트 → Slack 알림(Incoming Webhook) | → `samples/slack-notification/` |
 | `interactive-mode-guide.md` | Claude Code 터미널 단축키·Vim 모드 전체 레퍼런스 | (독립) |
+| `prompt-structure-10-stacks.md` | Anthropic "Prompting 101" 기반 10단계 시스템 프롬프트 구조 (동봉 `.svg` 도해와 1:1 매칭) | (독립) |
+| `skills-commands-hooks-guide.md` | 모든 프로젝트가 갖춰야 할 Skill·Slash Command·Hook 자동화 패키지 | (독립) |
 
 #### `docs/html/` & `docs/images/`
-- `appendix-github-guide.html` — GitHub 사용 가이드 (스크린샷 약 50장: `docs/images/github-guide/`)
+- `github-guide-101.html` — Git · GitHub 활용 가이드 (스크린샷: `docs/images/github-guide/`)
 - `claude-code-hook-guide.html` — Claude Code Hooks 실전 가이드 (다크모드 HTML)
 
 ### 📁 `example/` — CLAUDE.md 철학 예제
@@ -116,7 +121,7 @@ AI 코딩 에이전트(Claude Code, Cursor, Codex 등)에게 프로젝트 맥락
 | `handoff/` | **Hooks** (PreCompact / SessionEnd / SessionStart) | 세션 종료 시 대화 컨텍스트를 추출·중복 제거·저장 → 새 세션에서 자동 주입 |
 | `slack-notification/` | **Hooks** (Stop) | 세션 종료 시 마지막 응답 요약을 Slack Webhook으로 전송 |
 
-각 샘플 디렉토리에 `README.md`, `settings.example.json`, `run-test.sh`가 있어 단독 실행·테스트가 가능하다.
+각 샘플 디렉토리에 `README.md`와 `run-test.sh`가 있어 단독 실행·테스트가 가능하다. Hooks 샘플(`handoff/`, `slack-notification/`)에는 `settings.example.json`이 추가로 포함된다.
 
 ---
 

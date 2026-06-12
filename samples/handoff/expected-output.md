@@ -50,4 +50,4 @@ stdout 에 SessionStart hook payload (Claude Code 에 주입되는 형식):
 
 - `Captured N user messages` 에서 N 은 sample-transcript.jsonl 의 user 라인 수와 일치해야 함 (현재 5)
 - `file references` 는 assistant tool_use 의 `file_path` 에서 수집된 절대경로 수
-- 5분(`HANDOFF_LATEST_MAX_AGE_SEC=900`) 이상 지난 latest 는 restore 의 clear fallback 에서 거부됨
+- 15분(`HANDOFF_LATEST_MAX_AGE_SEC=900`) 이상 지난 latest 는 restore 의 clear fallback 에서 거부됨

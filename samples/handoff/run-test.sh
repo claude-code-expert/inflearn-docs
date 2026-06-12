@@ -42,7 +42,7 @@ case "$MODE" in
       \"session_id\": \"$SESSION_ID\",
       \"transcript_path\": \"$TRANSCRIPT\",
       \"cwd\": \"$CWD\",
-      \"source\": \"clear\"
+      \"reason\": \"clear\"
     }")
     echo "$PAYLOAD" | python3 session-end-handoff.py
     echo "---"
