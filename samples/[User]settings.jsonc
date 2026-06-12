@@ -1,0 +1,59 @@
+{
+  // ════════════════════════════════════════════════════════════════
+  // ⚠️  위험 — 이 파일을 그대로 적용하지 마세요
+  // ════════════════════════════════════════════════════════════════
+  // 이 .jsonc 파일은 "설명 주석이 달린 예시 템플릿"입니다.
+  // 실제 settings.json은 표준 JSON이라 주석(//)을 허용하지 않습니다.
+  // 주석이 남아 있으면 "Invalid or malformed JSON" 오류로 설정 전체가 무시됩니다.
+  //
+  // 사용법:  ① 모든 // 주석 제거  →  ② .json 확장자로 저장  →  ③ 적용
+  // ════════════════════════════════════════════════════════════════
+
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+
+  // ── 개인 기본 모델·추론 강도 (모든 프로젝트 공통) ──
+  "model": "opus4.8",            // 기본 모델. 프로젝트에서 /model로 임시 변경 가능
+  "effortLevel": "high",        // 추론 강도 기본값 (low/medium/high/xhigh)
+
+  // ── 표시·동작 취향 ──
+  "outputStyle": "Explanatory", // 답변 스타일 (예: Explanatory, Concise 등)
+  "language": "korean",         // Claude 응답·음성 인식 언어
+  "includeCoAuthoredBy": false, // 커밋에 "Co-authored-by: Claude" 서명 넣지 않기
+  "cleanupPeriodDays": 30,      // 로컬 세션 기록 보관 일수 (기본 30, 0이면 비저장)
+  "autoUpdatesChannel": "stable", // 업데이트 채널: stable(안정) / latest(최신)
+
+  // ── 개인 환경 변수 (셸 export보다 우선순위 낮음) ──
+  "env": {
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"  // 비필수 트래픽 차단 (선택)
+  },
+
+  // ── 범용 안전 권한: "어느 프로젝트든" 항상 적용하고 싶은 가드 ──
+  "permissions": {
+    "defaultMode": "acceptEdits",     // 기본 권한 모드 (개인 작업 흐름 취향)
+    "deny": [
+      // 비밀 파일 — 빌트인 도구 + Bash 우회 모두 차단
+      "Read(./.env*)",
+      "Bash(cat .env*)",
+      // 시스템 위험 명령 — 어디서나 금지
+      "Bash(sudo *)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~*)"
+    ]
+  },
+
+  // ── 개인용 hook: 프로젝트 무관하게 늘 쓰고 싶은 것만 ──
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            // 작업 끝나면 소리 알림 (macOS) — 어느 프로젝트든 동일하게 유용
+            "type": "command",
+            "command": "afplay /System/Library/Sounds/Glass.aiff 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}
