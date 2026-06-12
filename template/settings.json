@@ -43,6 +43,9 @@
   //     Stop        : 응답 완료 후 (전체 검증용)
   //     matcher ""  : Stop 이벤트에서 항상 실행
 
+  // settings.json 스키마. IDE 자동완성·오타 검증을 켠다.
+  // 값이 비었거나 잘못되면 파일 전체가 무시되므로 정확한 URL만 사용한다.
+
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
 
   // ═══════════════════════════════════════════════════════════════
@@ -64,75 +67,76 @@
       "Bash(npm run db:studio)"
     ],
     "deny": [
-      // Git 절대 금지
-      "Bash(git push --force*)",
-      "Bash(git reset --hard*)",
-      "Bash(git commit --no-verify*)",
+      // 파괴적 git — 단어경계(공백+*)로 명령 계열 차단
+      "Bash(git push --force *)",
+      "Bash(git reset --hard *)",
+      "Bash(git commit --no-verify *)",
+      "Bash(npm audit fix --force *)",
 
-      // npm 위험 명령
-      "Bash(npm audit fix --force*)",
-
-      // 파괴적 삭제
+      // 파괴적 파일 명령
       "Bash(rm -rf /*)",
-      "Bash(rm -rf .git*)",
       "Bash(rm -rf ~*)",
+      "Bash(rm -rf .git*)",
 
-      // DB 위험 명령 (CLI 경유 차단)
-      "Bash(*DROP TABLE*)",
-      "Bash(*DROP DATABASE*)",
-      "Bash(*TRUNCATE*)",
+      // 비밀 파일 — 빌트인 도구 차단 (gitignore 문법)
+      "Read(./.env*)",
+      "Edit(./.env*)",
+      "Write(./.env*)",
+      // ⚠️ Bash 우회(cat/less 등)는 위 규칙으로 못 막음 → 아래 추가 필수
+      "Bash(cat .env*)",
+      "Bash(less .env*)",
+      "Bash(head .env*)",
 
-      // 민감 파일 읽기/수정 차단
-      "Read(.env.local)",
-      "Edit(.env.local)",
-      "Write(.env.local)",
-      "Edit(migrations/*)"
+      // 마이그레이션 보호 — ** 로 재귀(하위 폴더까지)
+      "Edit(migrations/**)",
+      "Write(migrations/**)"
     ]
   },
 
+  // ════════════════════════════════════════════════════════════
+  // hooks — 특정 시점에 셸 명령 자동 실행
+  //   · 페이로드는 stdin JSON으로 전달 → jq로 파싱 (환경변수 아님)
+  //   · PreToolUse에서 exit 2 = 차단 + stderr가 모델에 전달되어 재시도 유도
+  //   · exit 1 은 비차단 경고 (작업 그대로 진행) — 차단 아님
+  // ════════════════════════════════════════════════════════════
   "hooks": {
-    // ═══════════════════════════════════════
-    // 🔒 PreToolUse — 실행 전 차단/검증
-    // ═══════════════════════════════════════
+    // ── 도구 실행 "전" 검증/차단 ──
     "PreToolUse": [
       {
-        "matcher": "Bash",  // ← PascalCase 필수
+        "matcher": "Bash",   // Bash 도구 호출에만 발동
         "hooks": [
           {
-            // 1) 위험 SQL 패턴 차단 (DROP, TRUNCATE)
-            //    jq로 stdin JSON에서 command를 추출한 뒤 grep으로 패턴 검사
+            // SQL 파괴 명령(DROP/TRUNCATE) 차단.
+            // permissions deny보다 견고: 명령 "내용 기반" + 모델에 사유 피드백.
             "type": "command",
             "command": "cmd=$(jq -r '.tool_input.command // \"\"'); echo \"$cmd\" | grep -iE '(DROP\\s+TABLE|DROP\\s+DATABASE|TRUNCATE)' >/dev/null 2>&1 && echo '❌ DROP/TRUNCATE 명령은 금지되어 있습니다.' >&2 && exit 2 || exit 0"
           },
           {
-            // 2) DELETE FROM — WHERE 절 필수
+            // WHERE 절 없는 DELETE FROM 차단 (휴리스틱).
+            // 멀티라인·서브쿼리에서는 오판 가능 → DB 읽기전용 계정과 병행 권장.
             "type": "command",
             "command": "cmd=$(jq -r '.tool_input.command // \"\"'); echo \"$cmd\" | grep -iE 'DELETE\\s+FROM' >/dev/null 2>&1 && ! echo \"$cmd\" | grep -iE 'WHERE' >/dev/null 2>&1 && echo '❌ DELETE FROM은 WHERE 절 없이 사용 금지입니다.' >&2 && exit 2 || exit 0"
           },
           {
-            // 3) git commit/push 자동 실행 차단
-            //    (^|\|\||&&|;) 패턴으로 체인 명령(&&, ;) 우회도 차단
+            // 사용자의 명시적 요청 없는 git commit/push 차단.
+            // 정규식으로 명령 시작·체인(|| && ;) 뒤의 git commit/push 탐지.
             "type": "command",
-            "command": "jq -r '.tool_input.command // \"\"' | grep -E '(^|\\|\\||&&|;)\\s*git\\s+(commit|push)' >/dev/null 2>&1 && echo '❌ git commit/push는 사용자의 명시적 요청 없이 실행할 수 없습니다.' >&2 && exit 2 || exit 0"
-          },
-          {
-            // 4) .env 파일 bash 경유 접근 차단 (deny 우회 방지)
-            "type": "command",
-            "command": "jq -r '.tool_input.command // \"\"' | grep -E '\\.(env|env\\.local|env\\.production)' >/dev/null 2>&1 && echo '❌ .env 파일은 사용자가 직접 관리합니다.' >&2 && exit 2 || exit 0"
+            "command": "cmd=$(jq -r '.tool_input.command // \"\"'); echo \"$cmd\" | grep -E '(^|\\|\\||&&|;)\\s*git\\s+(commit|push)' >/dev/null 2>&1 && echo '❌ git commit/push는 명시적 요청 없이 실행할 수 없습니다.' >&2 && exit 2 || exit 0"
           }
         ]
       },
       {
-        "matcher": "Write|Edit",  // ← 파일 쓰기/수정 도구
+        "matcher": "Write|Edit",   // 파일 쓰기·편집 도구에만 발동
         "hooks": [
           {
-            // 5) 보호 파일 수정 차단 (schema, config 등)
-            //    jq로 .tool_input.file_path 추출 후 case 패턴 매칭
+            // 핵심 설정 파일(schema.ts, drizzle.config.ts, next.config.ts, .env*) 수정 차단.
+            // .tool_input.file_path 를 case 패턴으로 검사.
             "type": "command",
-            "command": "f=$(jq -r '.tool_input.file_path // \"\"'); case \"$f\" in */schema.ts|*/drizzle.config.ts|*/next.config.ts|*.env|*.env.*) echo '⚠️ 보호된 파일입니다. 수정하려면 사용자 확인이 필요합니다: '$f >&2; exit 2;; esac"
+            "command": "f=$(jq -r '.tool_input.file_path // \"\"'); case \"$f\" in */schema.ts|*/drizzle.config.ts|*/next.config.ts|*.env|*.env.*) echo \"⚠️ 보호된 파일입니다. 사용자 확인이 필요합니다: $f\" >&2; exit 2;; esac"
           },
           {
-            // 6) 파일 수정 전 자동 백업 (.bak)
+            // 수정 "전" 원본을 .bak 으로 자동 백업.
+            // || true 로 실패해도 작업 흐름이 끊기지 않게 한다.
             "type": "command",
             "command": "f=$(jq -r '.tool_input.file_path // \"\"'); [ -n \"$f\" ] && [ -f \"$f\" ] && cp \"$f\" \"$f.bak\" 2>/dev/null || true"
           }
@@ -140,16 +144,14 @@
       }
     ],
 
-    // ═══════════════════════════════════════
-    // ✅ PostToolUse — 실행 후 자동 수정
-    // ═══════════════════════════════════════
+    // ── 도구 실행 "후" 보정 (이미 실행됨 → 차단 불가, 자동 수정용) ──
     "PostToolUse": [
       {
         "matcher": "Write|Edit",
         "hooks": [
           {
-            // 7) ESLint 자동 수정
-            //    PostToolUse는 tool_response.filePath 우선, 없으면 tool_input.file_path
+            // 수정된 파일에 ESLint 자동 수정 적용.
+            // 매 파일 수정마다 도므로 가볍게 유지. 결과 경로 우선, 없으면 입력 경로.
             "type": "command",
             "command": "f=$(jq -r '.tool_response.filePath // .tool_input.file_path // \"\"'); [ -n \"$f\" ] && npx eslint --fix \"$f\" 2>/dev/null || true"
           }
@@ -157,15 +159,13 @@
       }
     ],
 
-    // ═══════════════════════════════════════
-    // 🏁 Stop — 응답 완료 후 전체 검증
-    // ═══════════════════════════════════════
+    // ── Claude 응답 완료 시 (무거운 전체 검증은 여기에 배치) ──
     "Stop": [
       {
-        "matcher": "",  // ← 빈 문자열 = 모든 Stop 이벤트에서 실행
+        "matcher": "",   // 빈 문자열 = 모든 경우 발동
         "hooks": [
           {
-            // 8) TypeScript 타입 체크
+            // 전체 타입 체크. tail -30 으로 출력량 제한 → 컨텍스트 낭비 방지.
             "type": "command",
             "command": "npx tsc --noEmit 2>&1 | tail -30"
           }
